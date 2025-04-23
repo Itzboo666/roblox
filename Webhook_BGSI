@@ -1,0 +1,108 @@
+local HttpService = game:GetService("HttpService")
+local request = syn and syn.request or http and http.request or fluxus and fluxus.request or error("No HTTP request function found!")
+
+local webhook = "https://discord.com/api/webhooks/1363822286934900867/Jv7F4gNLDYMo3xSjn91w_HQueYHaFZt_39jHU6bTqNBWvRGVC8IuqtpUOXybOUAINNxC"
+local images = {
+    ["Cardinal Bunny"] = "https://i.imgur.com/PKDBb18.png",
+    ["Seraphic Bunny"] = "https://i.imgur.com/l0GGaup.png",
+    ["Ethereal Bunny"] = "https://i.imgur.com/kXf1vVN.png",
+    ["Sweet Treat"] = "https://i.imgur.com/GZLv4ug.png",
+    ["Rainbow Marshmellow"] = "https://i.imgur.com/fyUCCci.png",
+    ["Giant Chocolate Chicken"] = "https://i.imgur.com/a/nRQDqbn.png",
+    ["Easter Basket"] = "https://i.imgur.com/a/easter-basket-bvLviPY.png",
+    ["Easter serpent"] = "https://i.imgur.com/a/AQ0JhzL.png",
+    ["Dualcorn"] = "https://i.imgur.com/a/y4UKjfz.png",
+    ["Holy Egg"] = "https://i.imgur.com/a/uRojEPL.png",
+    ["Godly Gem"] = "https://i.imgur.com/a/2su6Kq7.png",
+    ["Dementor"] = "https://i.imgur.com/a/J5SQQ6N.png"
+}
+
+local petChances = {
+    ["Sweet Treat"] = 25000, --Pastel Egg
+    ["Rainbow Marshmellow"] = 125000,
+    ["Giant Chocolate Chicken"] = 50000000,
+    ["Seraphic Bunny"] = 5000, -- Bunny Egg
+    ["Ethereal Bunny"] = 100000,
+    ["Cardinal Bunny"] = 1000000,
+    ["Easter Basket"] = 100000000,
+    ["Easter serpent"] = 2500, -- Throwback egg
+    ["Dualcorn"] = 48521,
+    ["Holy Egg"] = 485211,
+    ["Godly Gem"] = 250000000,
+    ["Dementor"] = 1000000000
+}
+
+local rarityColors = {
+    ["Legendary"] = tonumber("dfc010", 16),  -- Gold
+    ["Secret"] = tonumber("a110df", 16)      -- Purple
+}
+
+local lastWebhookTime = 0
+
+game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framework"):WaitForChild("Network"):WaitForChild("Remote"):WaitForChild("Event").OnClientEvent:Connect(function()
+    local currentTime = os.time()
+    
+    -- Rate limit webhooks to one per second
+    if currentTime - lastWebhookTime < 1 then return end
+    
+    -- Wait for GUI to load
+    local hatchingGui = game:GetService("Players").LocalPlayer.PlayerGui:WaitForChild("ScreenGui"):WaitForChild("Hatching")
+    hatchingGui:WaitForChild("Template")
+    
+    -- Wait for animations
+    task.wait(3)
+    
+    local embeds = {}
+    
+    for _, instance in pairs(hatchingGui:GetChildren()) do
+        if instance.Name == "Template" then
+            local rarity = instance:FindFirstChild("Rarity") and instance.Rarity.Text
+            local petName = instance.Label.Text
+            
+            -- Only process if it's one of our tracked pets
+            if petChances[petName] and (rarity == "Legendary" or rarity == "Secret") then
+                local chance = petChances[petName]
+                local image_link = images[petName]
+                
+                -- Format chance with commas
+                local formattedChance = tostring(chance):reverse():gsub("%d%d%d", "%1,"):reverse():gsub("^,", "")
+                
+                table.insert(embeds, {
+                    title = "🚨 ULTRA RARE HATCH! 🚨",
+                    description = string.format(
+                        "**%s**\nRarity: %s\nChance: 1 in %s",
+                        petName,
+                        rarity,
+                        formattedChance
+                    ),
+                    color = rarityColors[rarity] or 0xFFFFFF,
+                    thumbnail = image_link and { url = image_link } or nil,
+                    footer = {
+                        text = os.date("Hatched at %I:%M:%S %p")
+                    }
+                })
+            end
+        end
+    end
+    
+    if #embeds > 0 then
+        lastWebhookTime = currentTime
+    
+        local success, response = pcall(function()
+            return request({
+                Url = webhook,
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = HttpService:JSONEncode({embeds = embeds})
+            })
+        end)
+        
+        if not success then
+            warn("HTTP Request failed:", response)
+        elseif response.StatusCode ~= 200 and response.StatusCode ~= 204 then
+            warn("Discord returned an error:", response.StatusCode, response.Body)
+        else
+            print("Sent webhook for ultra rare pet")
+        end
+    end
+end)
