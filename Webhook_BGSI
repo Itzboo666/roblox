@@ -41,6 +41,7 @@ local lastWebhookTime = 0
 
 game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framework"):WaitForChild("Network"):WaitForChild("Remote"):WaitForChild("Event").OnClientEvent:Connect(function()
     local currentTime = os.time()
+    local playerName = game:GetService("Players").LocalPlayer.Name -- Added username here
     
     -- Rate limit webhooks to one per second
     if currentTime - lastWebhookTime < 1 then return end
@@ -70,7 +71,8 @@ game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framew
                 table.insert(embeds, {
                     title = "🚨 ULTRA RARE HATCH! 🚨",
                     description = string.format(
-                        "**%s**\nRarity: %s\nChance: 1 in %s",
+                        "**Hatched by: %s**\n**%s**\nRarity: %s\nChance: 1 in %s", -- Added username line
+                        playerName,  -- Inserted here
                         petName,
                         rarity,
                         formattedChance
