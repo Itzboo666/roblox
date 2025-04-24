@@ -26,8 +26,8 @@ local petChances = {
     ["Cardinal Bunny"] = 1000000,
     ["Easter Basket"] = 100000000,
     ["Easter serpent"] = 2500, -- Throwback egg
-    ["Dualcorn"] = 48521,
-    ["Holy Egg"] = 485211,
+    ["Dualcorn"] = 50000,
+    ["Holy Egg"] = 500000,
     ["Godly Gem"] = 250000000,
     ["Dementor"] = 1000000000
 }
