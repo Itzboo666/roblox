@@ -1,0 +1,113 @@
+local HttpService = game:GetService("HttpService")
+local request = syn and syn.request or http and http.request or fluxus and fluxus.request or error("No HTTP request function found!")
+
+local webhook = "https://discord.com/api/webhooks/1363822286934900867/Jv7F4gNLDYMo3xSjn91w_HQueYHaFZt_39jHU6bTqNBWvRGVC8IuqtpUOXybOUAINNxC"
+local images = {
+    ["Cardinal Bunny"] = "https://i.imgur.com/PKDBb18.png",
+    ["Seraphic Bunny"] = "https://i.imgur.com/l0GGaup.png",
+    ["Ethereal Bunny"] = "https://i.imgur.com/kXf1vVN.png",
+    ["Sweet Treat"] = "https://i.imgur.com/GZLv4ug.png",
+    ["Rainbow Marshmellow"] = "https://i.imgur.com/fyUCCci.png",
+    ["Giant Chocolate Chicken"] = "https://i.imgur.comnRQDqbn.png",
+    ["Easter Basket"] = "https://i.imgur.comeaster-basket-bvLviPY.png",
+    ["Easter Serpent"] = "https://r2.e-z.host/a7854fd1-f9fa-4078-a4e3-0f21c2c731da/385xb84o.png",
+    ["Dualcorn"] = "https://r2.e-z.host/a7854fd1-f9fa-4078-a4e3-0f21c2c731da/p67nm0o1.png",
+    ["Holy Egg"] = "https://r2.e-z.host/a7854fd1-f9fa-4078-a4e3-0f21c2c731da/ljd6q7zf.png",
+    ["Godly Gem"] = "https://r2.e-z.host/a7854fd1-f9fa-4078-a4e3-0f21c2c731da/zsw2ia84.png",
+    ["Dementor"] = "https://r2.e-z.host/a7854fd1-f9fa-4078-a4e3-0f21c2c731da/89iziqno.png"
+}
+
+local petChances = {
+    ["Sweet Treat"] = 25000,
+    ["Rainbow Marshmellow"] = 125000,
+    ["Giant Chocolate Chicken"] = 50000000,
+    ["Seraphic Bunny"] = 5000,
+    ["Ethereal Bunny"] = 100000,
+    ["Cardinal Bunny"] = 1000000,
+    ["Easter Basket"] = 100000000,
+    ["Easter Serpent"] = 2500,
+    ["Dualcorn"] = 50000,
+    ["Holy Egg"] = 500000,
+    ["Godly Gem"] = 250000000,
+    ["Dementor"] = 1000000000
+}
+
+local rarityColors = {
+    ["Legendary"] = tonumber("dfc010", 16),
+    ["Secret"] = tonumber("a110df", 16)
+}
+
+-- Duplicate protection system
+local lastHatches = {
+    time = 0,
+    pets = {}
+}
+local PROCESSING_LOCK = false
+local COOLDOWN = 5 -- Increased to 5 seconds
+
+game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framework"):WaitForChild("Network"):WaitForChild("Remote"):WaitForChild("Event").OnClientEvent:Connect(function()
+    if PROCESSING_LOCK or (os.time() - lastHatches.time) < COOLDOWN then return end
+    PROCESSING_LOCK = true
+    
+    -- Wait for full hatch animation
+    local hatchingGui = game:GetService("Players").LocalPlayer.PlayerGui:WaitForChild("ScreenGui")
+    if not hatchingGui then return end
+    local container = hatchingGui:WaitForChild("Hatching"):WaitForChild("Last")
+    task.wait(6) -- Increased wait for slower animations
+
+    local embeds = {}
+    local currentPets = {}
+
+    for _, instance in pairs(container:GetChildren()) do
+        if instance:IsA("Frame") and instance.Name == "Template" then
+            local rarity = instance:FindFirstChild("Rarity") and instance.Rarity.Text
+            local petName = instance.Label.Text
+            
+            if petChances[petName] and rarityColors[rarity] and not currentPets[petName] then
+                currentPets[petName] = true
+                
+                local formattedChance = tostring(petChances[petName]):reverse():gsub("%d%d%d", "%1,"):reverse():gsub("^,", "")
+                
+                table.insert(embeds, {
+                    title = "🚨 ULTRA RARE HATCH! 🚨",
+                    description = string.format(
+                        "**%s**\nRarity: %s\nChance: 1 in %s",
+                        petName,
+                        rarity,
+                        formattedChance
+                    ),
+                    color = rarityColors[rarity],
+                    thumbnail = {url = images[petName]},
+                    footer = {text = os.date("Hatched at %I:%M:%S %p")}
+                })
+            end
+        end
+    end
+
+    if #embeds > 0 then
+        local success, response = pcall(function()
+            return request({
+                Url = webhook,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode({embeds = embeds})
+            })
+        end)
+
+        if success and (response.StatusCode == 200 or response.StatusCode == 204) then
+            lastHatches.time = os.time()
+            print("Webhook sent successfully")
+        else
+            warn("Webhook failed:", response.StatusCode or "No response")
+        end
+    end
+
+    PROCESSING_LOCK = false
+    -- Clear memory after cooldown
+    task.wait(COOLDOWN)
+    lastHatches.pets = {}
+end)
+
+
+-- Idiot Hub
+loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
