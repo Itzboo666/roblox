@@ -1,0 +1,60 @@
+-- Auto-execute version (for Synapse/Krnl/Fluxus auto-run)
+wait(1.1)
+repeat wait() until game:IsLoaded()
+
+-- Check for aura egg
+local function HasEgg()
+    local Rendered = workspace:WaitForChild("Rendered", 3)
+    if Rendered then
+        local Rifts = Rendered:FindFirstChild("Rifts")
+        if Rifts then
+            return Rifts:FindFirstChild("aura-egg") or Rifts:FindFirstChild("man-egg")
+        end
+    end
+    return nil
+end
+
+if HasEgg() then
+    print("✅ Aura Egg Found! Stopping...")
+    return -- Stop if egg exists
+else
+    print("❌ No Egg Found, Rejoining...")
+
+    -- Auto-restart after teleport (Synapse/Fluxus/Krnl supported)
+    local queue_teleport = syn and syn.queue_on_teleport or queue_on_teleport or fluxus and fluxus.queue_on_teleport
+    if queue_teleport then
+        queue_teleport([[
+            wait(1)
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
+        ]])
+    end
+
+    -- Find new servers
+    local PlaceID = 85896571713843
+    local Servers = {}
+    local cursor = ""
+    
+    repeat
+        local success, data = pcall(function()
+            local response = game:HttpGet("https://games.roblox.com/v1/games/"..PlaceID.."/servers/Public?limit=100&cursor="..cursor)
+            return game:GetService("HttpService"):JSONDecode(response)
+        end)
+        
+        if success and data then
+            for _, server in pairs(data.data) do
+                if server.id ~= game.JobId and server.playing < server.maxPlayers then
+                    table.insert(Servers, server.id)
+                end
+            end
+            cursor = data.nextPageCursor
+        end
+        wait()
+    until not cursor or cursor == ""
+    
+    -- Teleport to a random server
+    if #Servers > 0 then
+        game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, Servers[math.random(1, #Servers)])
+    else
+        warn("⚠️ No available servers found!")
+    end
+end
