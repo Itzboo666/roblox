@@ -70,7 +70,7 @@ function TPReturner()
                 if queueteleport then
                     queueteleport([[
                         wait(1)
-                        loadstring(game:HttpGet(""))()
+                        loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Aura-Finder"))()
                     ]])
                 end
                 
