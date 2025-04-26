@@ -1,6 +1,6 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local webhook = "https://discord.com/api/webhooks/1363822286934900867/Jv7F4gNLDYMo3xSjn91w_HQueYHaFZt_39jHU6bTqNBWvRGVC8IuqtpUOXybOUAINNxC"
+local webhook = "https://discord.com/api/webhooks/1354911514032869570/Sh1mtsFB_Sh0RtOIALavtOi2SHbXndeISiTpYpZbXX7LrZmgfEa2xMJ4SDDPIh3eWf_Z"
 
 local images = {
     ["Cardinal Bunny"] = "https://i.imgur.com/PKDBb18.png",
