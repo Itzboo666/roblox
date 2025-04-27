@@ -1,13 +1,13 @@
 getgenv().Settings = {
     ["Egg Settings"] = {
         OpenEggs = true,
-        Egg = "Infinity Egg",
+        Egg = "100M Egg",
         --// Supports ANY egg ("Rainbow Egg", "Infinity Egg", ...). Keep "Best" for new accounts.
 
         ["Notifications"] = {
             Webhook = "https://discord.com/api/webhooks/1363822286934900867/Jv7F4gNLDYMo3xSjn91w_HQueYHaFZt_39jHU6bTqNBWvRGVC8IuqtpUOXybOUAINNxC",
             DiscordID = "",
-            Difficulty = "30k", --// Minimum Difficulty for Webhook Notifications
+            Difficulty = "2k", --// Minimum Difficulty for Webhook Notifications
         },
 
         ["Rifts"] = {
