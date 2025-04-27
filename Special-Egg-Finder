@@ -1,36 +1,41 @@
-local webhook = getgenv().webhook
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
-local queueteleport = (syn and syn.queue_on_teleport) or queue_on_teleport or (fluxus and fluxus.queue_on_teleport)
+local Players = game:GetService("Players")
 local PlaceID = game.PlaceId
 
--- Improved data structure for server tracking
-local actualHour = os.date("!*t").hour
-local serverData = {
-    Hour = actualHour,
-    Servers = {}
-}
+-- Configuration
+local EGG_NAME = "silly-egg"
+local EGG_PATH = workspace:WaitForChild("Rendered"):WaitForChild("Rifts")
+local CHECK_INTERVAL = 5 -- seconds between server checks
+local TELEPORT_DELAY = 3 -- seconds before teleporting
+local SCRIPT_URL = "https://raw.githubusercontent.com/IdiotHub/Scripts/main/BGSI/main.lua"
 
--- Load server data with better error handling
-local function loadServerData()
+-- Track visited servers to avoid repeats
+local visitedServers = {}
+
+local function findEgg()
+    return EGG_PATH:FindFirstChild(EGG_NAME, true)
+end
+
+local function executeEggScript()
     local success, content = pcall(function()
-        return HttpService:JSONDecode(readfile("NotSameServers.json"))
+        return game:HttpGet(SCRIPT_URL)
     end)
     
-    if success and content and content.Hour == actualHour then
-        serverData.Servers = content.Servers
+    if success then
+        loadstring(content)()
+        
+        -- Wait until egg disappears
+        while findEgg() do
+            task.wait(1)
+        end
     else
-        pcall(function() delfile("NotSameServers.json") end)
-        writefile("NotSameServers.json", HttpService:JSONEncode(serverData))
+        warn("Failed to load egg script:", content)
     end
 end
 
-loadServerData()
-
--- Optimized server fetcher with rate limiting
-local function TPReturner()
+local function findNewServer()
     local cursor = ""
-    local servers = {}
     
     repeat
         local success, result = pcall(function()
@@ -43,81 +48,47 @@ local function TPReturner()
         
         if not success then
             warn("Failed to fetch servers:", result)
-            return
+            task.wait(5)
+            return nil
         end
         
+        -- Find first available server we haven't visited
         for _, server in ipairs(result.data) do
-            if tonumber(server.maxPlayers) > tonumber(server.playing) then
-                servers[#servers+1] = tostring(server.id)
+            local serverId = tostring(server.id)
+            if tonumber(server.maxPlayers) > tonumber(server.playing) and not visitedServers[serverId] then
+                return serverId
             end
         end
         
         cursor = result.nextPageCursor or ""
-    until cursor == "" or #servers > 0
-
-    for _, id in ipairs(servers) do
-        if not serverData.Servers[id] then
-            serverData.Servers[id] = true
-            pcall(function()
-                writefile("NotSameServers.json", HttpService:JSONEncode(serverData))
-            end)
-            
-            wait(3)  -- Added 3-second delay before teleport
-            pcall(function()
-                TeleportService:TeleportToPlaceInstance(PlaceID, id)
-            end)
-            return
-        end
-    end
-end
-
-local function Teleport()
-    while true do
-        local success, err = pcall(TPReturner)
-        if not success then
-            warn("Teleport error:", err)
-        end
-        wait(5)
-    end
-end
-
-
-local function findEgg(riftsFolder)
-    return riftsFolder:FindFirstChild("silly-egg", true) 
-end
-
-local request = syn and syn.request or http and http.request or fluxus and fluxus.request
-local riftsFolder = workspace:WaitForChild("Rendered"):WaitForChild("Rifts")
-local egg = findEgg(riftsFolder)  
-
-if egg and webhook and request then
-    local embed = {
-        title = "   Silly egg detected!",
-        description = "Time Left: " .. egg.Display.SurfaceGui.Timer.Text
-    }
+    until cursor == ""
     
-    pcall(function()
-        request({
-            Url = webhook,
-            Method = "POST",
-            Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode({embeds = {embed}})
-        })
-    end)
-else
-    if queueteleport then
-        queueteleport('getgenv().webhook = "' .. webhook .. '"; loadstring(game:HttpGet"https://raw.githubusercontent.com/Itzboo666/roblox/main/Special-Egg-Finder")()')
+    return nil
+end
+
+local function serverHop()
+    while true do
+        -- Check for egg first
+        local egg = findEgg()
+        if egg then
+            executeEggScript()
+            -- Clear visited servers since we want fresh options after egg disappears
+            table.clear(visitedServers)
+        end
+        
+        -- Find and join a new server
+        local serverId = findNewServer()
+        if serverId then
+            visitedServers[serverId] = true
+            task.wait(TELEPORT_DELAY)
+            pcall(function()
+                TeleportService:TeleportToPlaceInstance(PlaceID, serverId, Players.LocalPlayer)
+            end)
+        end
+        
+        task.wait(CHECK_INTERVAL)
     end
-    Teleport()
 end
 
--- Load external script with validation
-local success, content = pcall(function()
-    return game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/main/BGSI/main.lua")
-end)
-
-if success then
-    loadstring(content)()
-else
-    warn("Failed to load external script:", content)
-end
+-- Start the process
+serverHop()
