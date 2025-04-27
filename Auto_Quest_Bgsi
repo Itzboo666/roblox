@@ -5,9 +5,9 @@ getgenv().Settings = {
         --// Supports ANY egg ("Rainbow Egg", "Infinity Egg", ...). Keep "Best" for new accounts.
 
         ["Notifications"] = {
-            Webhook = "",
+            Webhook = "https://discord.com/api/webhooks/1363822286934900867/Jv7F4gNLDYMo3xSjn91w_HQueYHaFZt_39jHU6bTqNBWvRGVC8IuqtpUOXybOUAINNxC",
             DiscordID = "",
-            Difficulty = "100k", --// Minimum Difficulty for Webhook Notifications
+            Difficulty = "30k", --// Minimum Difficulty for Webhook Notifications
         },
 
         ["Rifts"] = {
@@ -24,8 +24,7 @@ getgenv().Settings = {
     ["Debug"] = {
         DisableUI = true,
         FarmCompetitiveQuests = true,
-        DisableUseInfinity = true,
-        DisableAutoDelete = true
+        DisableUseInfinity = true
     },
 }
 loadstring(game:HttpGet("https://system-exodus.com/scripts/BGSI/OneClick.lua"))()
