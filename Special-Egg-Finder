@@ -71,7 +71,7 @@ function Teleport()
 end
 
 local request = syn and syn.request or http and http.request or fluxus and fluxus.request or error("No HTTP request function found!")
-local egg = game.Workspace:WaitForChild("Rendered"):WaitForChild("Rifts"):FindFirstChild("silly-egg") or game.Workspace.Rendered.Rifts:FindFirstChild("man-egg")
+local egg = game.Workspace:WaitForChild("Rendered"):WaitForChild("Rifts"):FindFirstChild("silly-egg") or game.Workspace.Rendered.Rifts:FindFirstChild("Silly-egg")
 if egg then
     embeds = {
         title = "Aura egg detected!",
@@ -84,7 +84,7 @@ if egg then
         Body = HttpService:JSONEncode({embeds = embeds})
     })
 else
-    queueteleport('getgenv().webhook = "' .. getgenv().webhook .. '"; loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/Random/bgsi%20aura%20egg%20find%20maybe"))()')
+    queueteleport('getgenv().webhook = "' .. getgenv().webhook .. '"; https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder')
     Teleport()
 end
 loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
