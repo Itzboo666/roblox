@@ -71,20 +71,25 @@ local function TPReturner()
     end
 end
 
--- Improved teleport loop with error handling
 local function Teleport()
     while true do
         local success, err = pcall(TPReturner)
         if not success then
             warn("Teleport error:", err)
         end
-        wait(5)  -- Check for servers every 5 seconds
+        wait(5)
     end
 end
 
--- Webhook request with better validation
+
+local function findEgg(riftsFolder)
+    return riftsFolder:FindFirstChild("Silly-egg", true) 
+        or riftsFolder:FindFirstChild("Silly Egg", true)
+end
+
 local request = syn and syn.request or http and http.request or fluxus and fluxus.request
-local egg = workspace:WaitForChild("Rendered"):WaitForChild("Rifts"):FindFirstChild("Silly-egg", true)
+local riftsFolder = workspace:WaitForChild("Rendered"):WaitForChild("Rifts")
+local egg = findEgg(riftsFolder)  
 
 if egg and webhook and request then
     local embed = {
