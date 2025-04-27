@@ -36,7 +36,11 @@ getgenv().Settings = {
     DisableUseGoldenOrb = true,
     DisableUseRerollOrb = true,
     DisableUseMysteryBox = true,
-    DisableUseGoldenBox = true
+    DisableUseGoldenBox = true,
+    DisableGoldenRift = true,
+    DisableGiftRift = true,
+    DisableVoidChest = true,
+    DisableGiantChest = true
     },
 }
 loadstring(game:HttpGet("https://system-exodus.com/scripts/BGSI/OneClick.lua"))()
