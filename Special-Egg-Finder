@@ -85,6 +85,7 @@ end
 local function findEgg(riftsFolder)
     return riftsFolder:FindFirstChild("Silly-egg", true) 
         or riftsFolder:FindFirstChild("Silly Egg", true)
+        or riftsFolder:FindFirstChild("silly egg", true)
 end
 
 local request = syn and syn.request or http and http.request or fluxus and fluxus.request
@@ -93,7 +94,7 @@ local egg = findEgg(riftsFolder)
 
 if egg and webhook and request then
     local embed = {
-        title = "Aura egg detected!",
+        title = "   Silly egg detected!",
         description = "Time Left: " .. egg.Display.SurfaceGui.Timer.Text
     }
     
