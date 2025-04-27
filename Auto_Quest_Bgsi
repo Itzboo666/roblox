@@ -1,7 +1,7 @@
 getgenv().Settings = {
     ["Egg Settings"] = {
         OpenEggs = true,
-        Egg = "100M Egg",
+        Egg = "Infinity Egg",
         --// Supports ANY egg ("Rainbow Egg", "Infinity Egg", ...). Keep "Best" for new accounts.
 
         ["Notifications"] = {
