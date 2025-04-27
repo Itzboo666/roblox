@@ -1,2 +1,2 @@
 getgenv().webhook = "https://discord.com/api/webhooks/1365149550028783758/EFwDPGMHyldZbn6udKoj17RRcJUUQI2jiZkTbdUVIPqKeCPu-TnIeRb7r_90_CU3ruo8"
-loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/Random/bgsi%20aura%20egg%20find%20maybe"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder"))()
