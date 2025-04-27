@@ -22,9 +22,21 @@ getgenv().Settings = {
     },
 
     ["Debug"] = {
-        DisableUI = true,
-        FarmCompetitiveQuests = true,
-        DisableUseInfinity = true
+    DisableUI = true,
+    DisableEquipPets = true,
+    DisableUseInfinity = true,
+    DisablePurchaseMerchants = false,
+    DisableCraftPotions = true,
+    DisableUseSeason1Egg = true,
+    SellBubbles = false,
+    DisableRoyalRift = true,
+    FarmCompetitiveQuests = true,
+    MinFarmTime = 4,
+    DisableUseSeason1Egg = true,
+    DisableUseGoldenOrb = true,
+    DisableUseRerollOrb = true,
+    DisableUseMysteryBox = true,
+    DisableUseGoldenBox = true
     },
 }
 loadstring(game:HttpGet("https://system-exodus.com/scripts/BGSI/OneClick.lua"))()
