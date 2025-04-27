@@ -22,7 +22,7 @@ getgenv().Settings = {
     },
 
     ["Debug"] = {
---    DisableUI = true,
+    DisableUI = true,
     DisableEquipPets = true,
     DisableUseInfinity = true,
     DisablePurchaseMerchants = false,
