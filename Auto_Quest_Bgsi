@@ -1,46 +1,44 @@
 getgenv().Settings = {
-    ["Egg Settings"] = {
-        OpenEggs = true,
-        Egg = "100M Egg",
-        --// Supports ANY egg ("Rainbow Egg", "Infinity Egg", ...). Keep "Best" for new accounts.
+    ["Open Egg"] = "100M Egg",
 
-        ["Notifications"] = {
-            Webhook = "https://discord.com/api/webhooks/1363822286934900867/Jv7F4gNLDYMo3xSjn91w_HQueYHaFZt_39jHU6bTqNBWvRGVC8IuqtpUOXybOUAINNxC",
-            DiscordID = "",
-            Difficulty = "2k", --// Minimum Difficulty for Webhook Notifications
-        },
+    ["Target Rifts"] = {"Silly Egg", "Rainbow Egg", "Throwback Egg"},
+    ["Minimum Rift Luck"] = 25,
+    ["Target Highest Luck"] = false,
+    --// true --> Targets highest luck out of ALL selected rifts.
+    --// false --> Targets highest luck out of the BEST selected rift.
 
-        ["Rifts"] = {
-            FindRifts = true,
-            SortByMultiplier = true, 
-            --// true --> Sort by Multiplier out of ALL Targetted Rifts.
-            --// false --> Sort by Multiplier out of BEST Targetted Rifts.
+    ["Webhook"] = "https://discord.com/api/webhooks/1363822286934900867/Jv7F4gNLDYMo3xSjn91w_HQueYHaFZt_39jHU6bTqNBWvRGVC8IuqtpUOXybOUAINNxC",
+    ["Discord ID"] = "",
+    ["Minimum Send Difficulty"] = "2k",
 
-            Targets = {"Silly Egg", "100M Egg"},
-            --// Targets = {} will automatically find the Top 3 BEST Rifts to hatch.
-        },
+    ["Enchant Equipped"] = {
+        ["Team Up"] = {Tier = 1, HigherTiers = true}
     },
+    ["Require All Enchants"] = false,
+
+    -- ["Trade Users"] = {"MainAccount1", "MainAccount2", "MainAccount3"},
 
     ["Debug"] = {
---    DisableUI = true,
-    DisableEquipPets = true,
-    DisableUseInfinity = true,
-    DisablePurchaseMerchants = false,
-    DisableCraftPotions = false,
-    DisableUseSeason1Egg = true,
-    SellBubbles = false,
-    DisableRoyalRift = true,
-    FarmCompetitiveQuests = false,
-    MinFarmTime = 4,
-    DisableUseSeason1Egg = true,
-    DisableUseGoldenOrb = true,
-    DisableUseRerollOrb = true,
-    DisableUseMysteryBox = true,
-    DisableUseGoldenBox = true,
-    DisableGoldenRift = true,
-    DisableGiftRift = true,
-    DisableVoidChest = true,
-    DisableGiantChest = true
-    },
+        DisableUI = true,
+        FarmCompetitiveQuests = true/false,
+        DisableUseInfinity = true,
+        MinFarmTime = 5,
+        DisablePurchaseMerchants = false,
+        DisableAutoDelete = true,
+        FPSLimit = number,
+        DisableUseMysteryBox = true,
+        DisableUseSeason1Egg = true,
+        DisableVoidChest = true,
+        DisableGiantChest = true,
+        DisableUseSpinTicket = true,
+        DisableUseGoldenOrb = false,
+        DisableUseRerollOrb = true,
+        DisableGiftRift = true,
+        DisableGoldenRift = true,
+        DisableRoyalRift = true,
+        SellBubbles = true/false,
+        DisableAutoRestarts = false
+        
+    }
 }
-loadstring(game:HttpGet("https://system-exodus.com/scripts/BGSI/OneClick.lua"))()
+loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/fb6f3bc2f2e7dd88042fac40addd4d57.lua"))()
