@@ -111,15 +111,15 @@ if success and egg then
 else
     -- Queue teleport with the webhook
    -- if queueteleport then
-       -- queueteleport('getgenv().webhook = "' .. webhook .. '"; loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder"))()')
+        getgenv().webhook = "' .. webhook .. '"; loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder"))()
   --  end
     -- Teleport()
 end
 
 -- Load additional script with error handling
-local success, err = pcall(function()
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
-end)
+-- local success, err = pcall(function()
+--    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
+-- end)
 
 if not success then
     warn("Failed to load additional script: " .. tostring(err))
