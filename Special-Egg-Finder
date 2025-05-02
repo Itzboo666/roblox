@@ -1,29 +1,44 @@
-local webhook = getgenv().webhook
 local HttpService = game:GetService("HttpService")
 local queueteleport = (syn and syn.queue_on_teleport) or queue_on_teleport or (fluxus and fluxus.queue_on_teleport)
+local request = syn and syn.request or http and http.request or fluxus and fluxus.request or request or error("No HTTP request function found!")
+
+-- Check if webhook exists in getgenv()
+if not getgenv().webhook then
+    error("Webhook URL not found in getgenv(). Please set getgenv().webhook before running this script.")
+end
+
+local webhook = getgenv().webhook
 local PlaceID = game.PlaceId
 local AllIDs = {}
 local foundAnything = ""
 local actualHour = os.date("!*t").hour
 local Deleted = false
+
+-- File operations with better error handling
 local File = pcall(function()
-    AllIDs = game:GetService('HttpService'):JSONDecode(readfile("NotSameServers.json"))
+    AllIDs = HttpService:JSONDecode(readfile("NotSameServers.json"))
 end)
+
 if not File then
     table.insert(AllIDs, actualHour)
-    writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+    pcall(function()
+        writefile("NotSameServers.json", HttpService:JSONEncode(AllIDs))
+    end)
 end
+
 function TPReturner()
     local Site;
     if foundAnything == "" then
-        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
+        Site = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
     else
-        Site = game.HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
+        Site = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
     end
+    
     local ID = ""
     if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
         foundAnything = Site.nextPageCursor
     end
+    
     local num = 0;
     for i,v in pairs(Site.data) do
         local Possible = true
@@ -45,11 +60,12 @@ function TPReturner()
                 end
                 num = num + 1
             end
+            
             if Possible == true then
                 table.insert(AllIDs, ID)
                 wait()
                 pcall(function()
-                    writefile("NotSameServers.json", game:GetService('HttpService'):JSONEncode(AllIDs))
+                    writefile("NotSameServers.json", HttpService:JSONEncode(AllIDs))
                     wait()
                     game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
                 end)
@@ -70,21 +86,41 @@ function Teleport()
     end
 end
 
-local request = syn and syn.request or http and http.request or fluxus and fluxus.request or error("No HTTP request function found!")
-local egg = game.Workspace:WaitForChild("Rendered"):WaitForChild("Rifts"):FindFirstChild("silly-egg")
-if egg then
-    embeds = {
-        title = "Aura egg detected!",
-        description = "Time Left: " .. egg.Display.SurfaceGui.Timer.Text
+-- Main execution
+local success, egg = pcall(function()
+    return game.Workspace:WaitForChild("Rendered"):WaitForChild("Rifts"):FindFirstChild("silly-egg")
+end)
+
+if success and egg then
+    local embeds = {
+        {
+            title = "Aura egg detected!",
+            description = "Time Left: " .. (egg.Display.SurfaceGui.Timer and egg.Display.SurfaceGui.Timer.Text or "unknown"),
+            color = 65280 -- Green color
+        }
     }
-    request({
-        Url = webhook,
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = HttpService:JSONEncode({embeds = embeds})
-    })
+    
+    pcall(function()
+        request({
+            Url = webhook,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = HttpService:JSONEncode({embeds = embeds})
+        })
+    end)
 else
-    queueteleport('getgenv().webhook = "' .. getgenv().webhook .. '"; loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder"))()')
+    -- Queue teleport with the webhook
+    if queueteleport then
+        queueteleport('getgenv().webhook = "' .. webhook .. '"; loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder"))()')
+    end
     Teleport()
 end
-loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
+
+-- Load additional script with error handling
+local success, err = pcall(function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
+end)
+
+if not success then
+    warn("Failed to load additional script: " .. tostring(err))
+end
