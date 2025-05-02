@@ -1,8 +1,8 @@
 getgenv().Settings = {
     ["Open Egg"] = "100M Egg",
 
-    ["Target Rifts"] = {"Silly Egg", "Rainbow Egg", "Throwback Egg"},
-    ["Minimum Rift Luck"] = 25,
+    ["Target Rifts"] = {"Silly Egg"},
+    ["Minimum Rift Luck"] = 5,
     ["Target Highest Luck"] = false,
     --// true --> Targets highest luck out of ALL selected rifts.
     --// false --> Targets highest luck out of the BEST selected rift.
@@ -20,7 +20,7 @@ getgenv().Settings = {
 
     ["Debug"] = {
         DisableUI = true,
-        FarmCompetitiveQuests = true/false,
+        FarmCompetitiveQuests = false,
         DisableUseInfinity = true,
         MinFarmTime = 5,
         DisablePurchaseMerchants = false,
@@ -36,7 +36,7 @@ getgenv().Settings = {
         DisableGiftRift = true,
         DisableGoldenRift = true,
         DisableRoyalRift = true,
-        SellBubbles = true/false,
+        SellBubbles = false,
         DisableAutoRestarts = false
         
     }
