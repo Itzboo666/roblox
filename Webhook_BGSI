@@ -1,7 +1,6 @@
---loadstring(game:HttpGetAsync("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Auto_Quest_Bgsi"))()
-
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+
 local webhook = "https://discord.com/api/webhooks/1363822286934900867/Jv7F4gNLDYMo3xSjn91w_HQueYHaFZt_39jHU6bTqNBWvRGVC8IuqtpUOXybOUAINNxC"
 
 local images = {
@@ -54,66 +53,98 @@ local petChances = {
     ["ROUND"] = 250000
 }
 
-game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framework"):WaitForChild("Network"):WaitForChild("Remote"):WaitForChild("Event").OnClientEvent:Connect(function()
-    local playerName = Players.LocalPlayer.Name
-    local request = http_request or request or syn.request
+-- Verify we have a way to make HTTP requests
+local request = (http_request or request or syn and syn.request)
+if not request then
+    warn("No HTTP request function available - webhooks disabled")
+else
+    -- Wait for the remote event
+    local remoteEvent = game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Framework"):WaitForChild("Network"):WaitForChild("Remote"):WaitForChild("Event")
     
-    -- Collect all hatched pets in one table
-    local hatchedPets = {}
-    
-    for _, instance in pairs(Players.LocalPlayer.PlayerGui.ScreenGui.Hatching.Last:GetChildren()) do
-        if instance:IsA("Frame") and petChances[instance.Name] then
-            local chanceText = instance:FindFirstChild("Chance") and instance.Chance.Text or "N/A"
-            table.insert(hatchedPets, {
-                name = instance.Name,
-                chance = chanceText,
-                image = images[instance.Name] or "https://via.placeholder.com/150"
-            })
+    remoteEvent.OnClientEvent:Connect(function()
+        local success, err = pcall(function()
+            local player = Players.LocalPlayer
+            if not player then return end
+            
+            local playerGui = player:FindFirstChild("PlayerGui")
+            if not playerGui then return end
+            
+            local screenGui = playerGui:FindFirstChild("ScreenGui")
+            if not screenGui then return end
+            
+            local hatching = screenGui:FindFirstChild("Hatching")
+            if not hatching then return end
+            
+            local last = hatching:FindFirstChild("Last")
+            if not last then return end
+            
+            local hatchedPets = {}
+            
+            for _, instance in pairs(last:GetChildren()) do
+                if instance:IsA("Frame") and petChances[instance.Name] then
+                    local chanceText = instance:FindFirstChild("Chance") and instance.Chance.Text or "N/A"
+                    table.insert(hatchedPets, {
+                        name = instance.Name,
+                        chance = chanceText,
+                        image = images[instance.Name] or "https://via.placeholder.com/150"
+                    })
+                end
+            end
+            
+            if #hatchedPets > 0 then
+                local embed = {
+                    title = "Hatched Pets",
+                    description = string.format("%s hatched %d pets", player.Name, #hatchedPets),
+                    color = 65280,
+                    author = {
+                        name = player.Name,
+                        icon_url = "https://www.roblox.com/headshot-thumbnail/image?userId="..player.UserId.."&width=420&height=420&format=png"
+                    },
+                    fields = {},
+                    thumbnail = {
+                        url = hatchedPets[1].image
+                    },
+                    footer = {
+                        text = os.date("%Y-%m-%d %H:%M:%S")
+                    }
+                }
+                
+                for _, pet in ipairs(hatchedPets) do
+                    table.insert(embed.fields, {
+                        name = pet.name,
+                        value = "Chance: "..pet.chance,
+                        inline = true
+                    })
+                end
+                
+                local data = {
+                    embeds = {embed},
+                    username = "Pet Hatch Logger",
+                    avatar_url = "https://i.imgur.com/6e5EhYJ.png"
+                }
+                
+                local response = request({
+                    Url = webhook,
+                    Method = "POST",
+                    Headers = {
+                        ["Content-Type"] = "application/json"
+                    },
+                    Body = HttpService:JSONEncode(data)
+                })
+                
+                if response.StatusCode ~= 200 and response.StatusCode ~= 204 then
+                    warn("Webhook failed with status:", response.StatusCode)
+                end
+            end
+        end)
+        
+        if not success then
+            warn("Error in webhook handler:", err)
         end
-    end
+    end)
     
-    -- Only send webhook if at least one pet was hatched
-    if #hatchedPets > 0 then
-        -- Prepare a single embed with all pets
-        local embed = {
-            title = "Hatched Pets",
-            description = "",
-            color = 65280,
-            author = {
-                name = playerName,
-                icon_url = "https://www.roblox.com/headshot-thumbnail/image?userId="..Players.LocalPlayer.UserId.."&width=420&height=420&format=png"
-            },
-            fields = {},
-            thumbnail = {
-                url = hatchedPets[1].image -- Use first pet's image as thumbnail
-            }
-        }
-        
-        -- Add each pet as a field in the embed
-        for _, pet in ipairs(hatchedPets) do
-            table.insert(embed.fields, {
-                name = pet.name,
-                value = "Chance: "..pet.chance,
-                inline = true
-            })
-        end
-        
-        local data = {
-            embeds = {embed}
-        }
-        
-        request({
-            Url = webhook,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = HttpService:JSONEncode(data)
-        })
-    end
-end)
+    print("Webhook system successfully initialized")
+end
 
-print("Webhook Successfully loaded")
 
---idiot hub
 loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
