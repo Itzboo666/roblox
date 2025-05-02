@@ -71,7 +71,7 @@ function Teleport()
 end
 
 local request = syn and syn.request or http and http.request or fluxus and fluxus.request or error("No HTTP request function found!")
-local egg = game.Workspace:WaitForChild("Rendered"):WaitForChild("Rifts"):FindFirstChild("silly egg") or game.Workspace.Rendered.Rifts:FindFirstChild("silly-egg")
+local egg = game.Workspace:WaitForChild("Rendered"):WaitForChild("Rifts"):FindFirstChild("silly-egg")
 if egg then
     embeds = {
         title = "Aura egg detected!",
