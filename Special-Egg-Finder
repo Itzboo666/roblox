@@ -110,10 +110,10 @@ if success and egg then
     end)
 else
     -- Queue teleport with the webhook
-    if queueteleport then
-        queueteleport('getgenv().webhook = "' .. webhook .. '"; loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder"))()')
-    end
-    Teleport()
+   -- if queueteleport then
+       -- queueteleport('getgenv().webhook = "' .. webhook .. '"; loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder"))()')
+  --  end
+    -- Teleport()
 end
 
 -- Load additional script with error handling
