@@ -1,126 +1,119 @@
 local HttpService = game:GetService("HttpService")
-local queueteleport = (syn and syn.queue_on_teleport) or queue_on_teleport or (fluxus and fluxus.queue_on_teleport)
-local request = syn and syn.request or http and http.request or fluxus and fluxus.request or request or error("No HTTP request function found!")
+local request = (syn and syn.request) or (http and http.request) or (fluxus and fluxus.request) or error("No HTTP request function found!")
 
--- Check if webhook exists in getgenv()
+-- Webhook verification
 if not getgenv().webhook then
-    error("Webhook URL not found in getgenv(). Please set getgenv().webhook before running this script.")
+    error("Webhook URL not found in getgenv(). Please set getgenv().webhook first!")
 end
-
 local webhook = getgenv().webhook
+
+-- Server tracking system
 local PlaceID = game.PlaceId
 local AllIDs = {}
 local foundAnything = ""
 local actualHour = os.date("!*t").hour
-local Deleted = false
 
--- File operations with better error handling
-local File = pcall(function()
-    AllIDs = HttpService:JSONDecode(readfile("NotSameServers.json"))
-end)
-
-if not File then
-    table.insert(AllIDs, actualHour)
-    pcall(function()
-        writefile("NotSameServers.json", HttpService:JSONEncode(AllIDs))
+-- Server list file management
+local function ManageServerFile()
+    local success, data = pcall(function()
+        return HttpService:JSONDecode(readfile("NotSameServers.json"))
     end)
+    
+    if success then
+        AllIDs = data
+    else
+        table.insert(AllIDs, actualHour)
+        pcall(function()
+            writefile("NotSameServers.json", HttpService:JSONEncode({actualHour}))
+        end)
+    end
 end
 
+ManageServerFile()
+
+-- Improved server fetcher with rate limiting
 function TPReturner()
-    local Site;
-    if foundAnything == "" then
-        Site = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100'))
-    else
-        Site = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. PlaceID .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-    end
+    local cursor = foundAnything ~= "" and foundAnything or nil
+    local url = `https://games.roblox.com/v1/games/{PlaceID}/servers/Public?sortOrder=Asc&limit=100`..(cursor and `&cursor={cursor}` or "")
     
-    local ID = ""
-    if Site.nextPageCursor and Site.nextPageCursor ~= "null" and Site.nextPageCursor ~= nil then
-        foundAnything = Site.nextPageCursor
-    end
+    local success, response = pcall(function()
+        return HttpService:JSONDecode(game:HttpGet(url))
+    end)
     
-    local num = 0;
-    for i,v in pairs(Site.data) do
-        local Possible = true
-        ID = tostring(v.id)
-        if tonumber(v.maxPlayers) > tonumber(v.playing) then
-            for _,Existing in pairs(AllIDs) do
-                if num ~= 0 then
-                    if ID == tostring(Existing) then
-                        Possible = false
-                    end
-                else
-                    if tonumber(actualHour) ~= tonumber(Existing) then
-                        local delFile = pcall(function()
-                            delfile("NotSameServers.json")
-                            AllIDs = {}
-                            table.insert(AllIDs, actualHour)
-                        end)
-                    end
-                end
-                num = num + 1
-            end
+    if not success then return end
+    
+    foundAnything = response.nextPageCursor or ""
+    
+    for _, server in pairs(response.data) do
+        if tonumber(server.playing) < tonumber(server.maxPlayers) then
+            local serverId = tostring(server.id)
             
-            if Possible == true then
-                table.insert(AllIDs, ID)
-                wait()
+            if not table.find(AllIDs, serverId) then
+                table.insert(AllIDs, serverId)
+                
                 pcall(function()
                     writefile("NotSameServers.json", HttpService:JSONEncode(AllIDs))
-                    wait()
-                    game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, ID, game.Players.LocalPlayer)
+                    game:GetService("TeleportService"):TeleportToPlaceInstance(PlaceID, serverId)
                 end)
-                wait(4)
+                
+                task.wait(2) -- Reduced wait time
+                return -- Exit after finding first available server
             end
         end
     end
 end
 
+-- Optimized teleport loop
 function Teleport()
-    while wait(0.5) do
-        pcall(function()
-            TPReturner()
-            if foundAnything ~= "" then
-                TPReturner()
-            end
-        end)
+    while task.wait(0.5) do
+        pcall(TPReturner)
+        if foundAnything ~= "" then
+            pcall(TPReturner)
+        end
     end
 end
 
--- Main execution
-local success, egg = pcall(function()
-    return game.Workspace:WaitForChild("Rendered"):WaitForChild("Rifts"):FindFirstChild("silly-egg")
-end)
+-- Enhanced egg detection
+local function FindEgg()
+    local success, egg = pcall(function()
+        return game:GetService("Workspace").Rendered.Rifts:FindFirstChild("silly-egg")
+    end)
+    return success and egg or nil
+end
 
-if success and egg then
-    local embeds = {
-        {
-            title = "Aura egg detected!",
-            description = "Time Left: " .. (egg.Display.SurfaceGui.Timer and egg.Display.SurfaceGui.Timer.Text or "unknown"),
-            color = 65280 -- Green color
-        }
+-- Webhook notification system
+local function SendNotification(egg)
+    local timerText = "unknown"
+    if egg and egg.Display.SurfaceGui:FindFirstChild("Timer") then
+        timerText = egg.Display.SurfaceGui.Timer.Text
+    end
+    
+    local embed = {
+        title = "🚨 Egg Detected! 🚨",
+        description = `**Aura egg found!**\nTime remaining: {timerText}`,
+        color = 65280,
+        fields = {
+            {name = "Server ID", value = game.JobId, inline = true},
+            {name = "Players", value = `{#game.Players:GetPlayers()}/{game.Players.MaxPlayers}`, inline = true}
+        },
+        timestamp = DateTime.now():ToIsoDate()
     }
     
     pcall(function()
         request({
             Url = webhook,
             Method = "POST",
-            Headers = { ["Content-Type"] = "application/json" },
-            Body = HttpService:JSONEncode({embeds = embeds})
+            Headers = {["Content-Type"] = "application/json"},
+            Body = HttpService:JSONEncode({embeds = {embed}})
         })
     end)
-else
-    -- Queue teleport with the webhook
-    if queueteleport then
-        getgenv().webhook = "' .. webhook .. '"; loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Special-Egg-Finder"))()
-    end
-     Teleport()
 end
 
--- Load additional script with error handling
--- local success, err = pcall(function()
---    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
--- end)
+-- Main execution flow
+local egg = FindEgg()
 
-if not success then
-    warn("Failed to load additional script: " .. tostring(err))
+if egg then
+    SendNotification(egg)
+else
+    Teleport()
 end
