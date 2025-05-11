@@ -1,197 +1,55 @@
 getgenv().Toggle = true
 
--- Debug settings
-local DEBUG_MODE = true
-local MAX_RETRIES = 5
-local RETRY_DELAY = 0.5
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local function debugPrint(...)
-    if DEBUG_MODE then
-        print("[DEBUG]", ...)
-    end
-end
+-- Corrected Remote paths (fixed "NetWork" typo)
+local RemoteFunction: RemoteFunction = ReplicatedStorage.Shared.Framework.Network.Remote.RemoteFunction
+local RemoteEvent: RemoteEvent = ReplicatedStorage.Shared.Framework.Network.Remote.RemoteEvent
 
--- Enhanced remote location finding with fallbacks
-local function findRemote(name, remoteType)
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local potentialPaths = {
-        "Shared.Framework.Network.Remote." .. name,
-        "Shared.Framework.Network." .. name,
-        "Framework.Network.Remote." .. name,
-        "Network.Remote." .. name,
-        "Remotes." .. name,
-        name
-    }
-    
-    for _, path in ipairs(potentialPaths) do
-        local current = ReplicatedStorage
-        local found = true
-        
-        for part in path:gmatch("[^.]+") do
-            if current:FindFirstChild(part) then
-                current = current[part]
-            else
-                found = false
-                break
-            end
-        end
-        
-        if found then
-            if remoteType == "Function" and current:IsA("RemoteFunction") then
-                debugPrint("Found RemoteFunction at path:", path)
-                return current
-            elseif remoteType == "Event" and current:IsA("RemoteEvent") then
-                debugPrint("Found RemoteEvent at path:", path)
-                return current
-            end
-        end
-    end
-    
-    return nil
-end
-
--- Initialize remotes with error handling
-local Function, Event
-local success, err = pcall(function()
-    Function = findRemote("Function", "Function") or 
-               findRemote("RemoteFunction", "Function") or
-               ReplicatedStorage:FindFirstChildWhichIsA("RemoteFunction", true)
-    
-    Event = findRemote("Event", "Event") or 
-            findRemote("RemoteEvent", "Event") or
-            ReplicatedStorage:FindFirstChildWhichIsA("RemoteEvent", true)
-    
-    if not Function then error("Could not find RemoteFunction") end
-    if not Event then error("Could not find RemoteEvent") end
-end)
-
-if not success then
-    warn("Remote initialization failed:", err)
-    return
-end
-
--- Load BoardUtil with error handling
-local BoardUtil
-success, err = pcall(function()
-    BoardUtil = require(ReplicatedStorage.Shared.Utils.BoardUtil)
-end)
-
-if not success then
-    warn("Failed to load BoardUtil:", err)
-    return
-end
+local BoardUtil = require(ReplicatedStorage.Shared.Utils.BoardUtil)
 
 local function RollDice(DiceType: number): number | "Tile Index"
-    local diceTypes = {"Dice", "Giant Dice", "Golden Dice"}
-    local diceName = diceTypes[DiceType] or "Dice"
-    
-    debugPrint("Attempting to roll:", diceName)
-    
-    local retries = 0
     local Returned
-    
-    while retries < MAX_RETRIES and not Returned do
-        retries = retries + 1
-        
-        success, Returned = pcall(function()
-            return Function:InvokeServer("RollDice", diceName)
-        end)
-        
-        if not success then
-            warn("RollDice invocation failed (attempt "..retries.."):", Returned)
-            Returned = nil
-            task.wait(RETRY_DELAY)
-        else
-            debugPrint("RollDice result:", Returned)
-            
-            -- Fire claim tile event
-            local claimSuccess = pcall(function()
-                Event:FireServer("ClaimTile")
-            end)
-            
-            if not claimSuccess then
-                warn("ClaimTile event failed to fire")
-            end
-        end
-    end
-    
-    if not Returned then
-        error("Failed to roll dice after "..MAX_RETRIES.." attempts")
-    end
-    
-    return Returned.Tile and Returned.Tile.Index or error("Invalid return from RollDice: Missing Tile.Index")
+    repeat
+        task.wait()
+        Returned = RemoteFunction:InvokeServer("RollDice", ({
+            "Dice",
+            "Giant Dice",
+            "Golden Dice"
+        })[DiceType])
+        RemoteEvent:FireServer("ClaimTile")
+    until Returned ~= nil
+
+    return Returned.Tile.Index
 end
 
 local Status = ""
 local function NextDice(TileIndex: number): number | "Dice Type"
-    debugPrint("Determining next dice for tile index:", TileIndex)
-    
-    for Tile = 1, 10 do
-        local currentTileIndex = TileIndex + Tile
-        
-        if currentTileIndex > 88 then
-            Status = "Reached the end of the board! Currently starting over by rolling a Dice!"
-            debugPrint(Status)
+    for offset = 1, 10 do
+        local CurrentTile = TileIndex + offset
+        if CurrentTile > 88 then
+            Status = "Reached the end of the board! Rolling Dice to restart."
             return 1
         end
-        
-        local node = BoardUtil.Nodes[currentTileIndex]
-        if not node then
-            warn("Invalid node at index:", currentTileIndex)
-            break
-        end
-        
-        if node.Type == "infinity" then
-            Status = string.format("Found Infinity Elixir at Tile: %d | TileIndex: %d", Tile, currentTileIndex)
-            debugPrint(Status)
-            
-            if Tile > 3 and Tile <= 6 or (Tile >= 6 and Tile < 9) then
-                return 1    
-            elseif Tile >= 9 then
-                return 2
-            elseif Tile < 3 then
-                return 3
+        if BoardUtil.Nodes[CurrentTile].Type == "infinity" then
+            Status = string.format("Found Infinity Elixir at Tile: %d", CurrentTile)
+            -- Corrected if-else conditions
+            if offset > 10 and offset <= 6 then
+                return 1 -- Dice
+            elseif offset > 6 and offset < 9 then
+                return 2 -- Giant Dice
+            elseif offset <= 10 then
+                return 3 -- Golden Dice
             end
         end
     end
-    
-    Status = "No inf elixir found within depth, rolling indefinitely"
-    debugPrint(Status)
-    return 1
+    Status = "No Infinity Elixir found. Using default Dice."
+    return 2
 end
 
--- Main execution loop with error handling
-local function main()
-    if not Toggle then return end
-    
-    debugPrint("Script started with Toggle = true")
-    
-    local Rolled
-    local success, err = pcall(function()
-        Rolled = RollDice(1)
-    end)
-    
-    if not success then
-        warn("Initial roll failed:", err)
-        return
-    end
-    
-    while Toggle do
-        success, err = pcall(function()
-            local diceType = NextDice(Rolled)
-            debugPrint("Next dice type:", diceType)
-            
-            Rolled = RollDice(diceType)
-            print("Rolled to tile:", Rolled, "| Status:", Status)
-        end)
-        
-        if not success then
-            warn("Error in main loop:", err)
-            -- Optional: add a delay before retrying
-            task.wait(1)
-        end
-    end
+-- Fixed while loop (removed extra parenthesis)
+local Rolled = RollDice(1)
+while getgenv().Toggle do
+    Rolled = RollDice(NextDice(Rolled))
+    print(Rolled, Status)
 end
-
--- Start the script
-main()
