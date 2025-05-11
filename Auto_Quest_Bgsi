@@ -35,7 +35,7 @@ getgenv().Settings = {
 --        DisableUseRerollOrb = true,
 --        DisableGiftRift = true,
 --        DisableGoldenRift = true,
-        DisableRoyalRift = true,
+        DisableRoyalRift = true
 --        SellBubbles = false,
 --        DisableAutoRestarts = false
         
