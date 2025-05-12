@@ -1,6 +1,6 @@
 print("BGSI X25 Auto-Teleport Initializing")
 
--- Universal WebSocket connection function
+-- Universal WebSocket connection handler
 local function connectWebSocket()
     local ws
     local maxAttempts = 3
@@ -9,43 +9,33 @@ local function connectWebSocket()
     while attempt < maxAttempts do
         local success, err = pcall(function()
             print("Connection attempt", attempt+1)
-            ws = WebSocket.connect("wss://31f9-2a00-23c7-148c-9801-b5f1-956d-18b3-969e.ngrok-free.app/ws")
+            
+            -- Universal WebSocket initialization
+            if syn and syn.websocket then
+                ws = syn.websocket.connect("wss://31f9-2a00-23c7-148c-9801-b5f1-956d-18b3-969e.ngrok-free.app/ws")
+            else
+                ws = WebSocket.connect("wss://31f9-2a00-23c7-148c-9801-b5f1-956d-18b3-969e.ngrok-free.app/ws")
+            end
             
             -- Universal message handler
-            ws.OnMessage = function(message)
-                print("Received command:", message)
-                
-                -- Verify it's a teleport command
-                if string.find(message, "TeleportToPlaceInstance") then
-                    local execSuccess, execError = pcall(function()
-                        loadstring(message)()
-                    end)
-                    
-                    if execSuccess then
-                        print("Teleport command executed!")
-                        
-                        -- 8-minute cooldown
-                        for i = 1, 480 do  -- 480 seconds = 8 minutes
-                            task.wait(1)
-                            if i % 60 == 0 then
-                                print((i/60).." minutes passed")
-                            end
-                        end
-                        
-                        print("Ready for new server")
-                        ws:Send("READY")
-                    else
-                        print("Execution failed:", execError)
-                    end
+            if ws.OnMessage then
+                -- Standard executors (Synapse)
+                ws.OnMessage:Connect(function(message)
+                    processMessage(message, ws)
+                end)
+            elseif ws.OnData then
+                -- Some custom executors
+                ws.OnData:Connect(function(message)
+                    processMessage(message, ws)
+                end)
+            else
+                -- Fallback for basic executors
+                ws.OnMessage = function(message)
+                    processMessage(message, ws)
                 end
             end
             
-            -- Basic error handling
-            ws.OnClose = function()
-                print("Connection closed")
-            end
-            
-            -- Initial ready signal
+            -- Connection success
             ws:Send("READY")
             print("Successfully connected!")
             return ws
@@ -58,13 +48,31 @@ local function connectWebSocket()
     end
 end
 
--- Main connection loop
+-- Universal message processor
+function processMessage(message, ws)
+    print("Received command:", message)
+    
+    if string.find(message, "TeleportToPlaceInstance") then
+        local success, err = pcall(loadstring(message))
+        if success then
+            print("Teleport executed! Starting 8-minute cooldown...")
+            for i = 1, 480 do  -- 8 minutes
+                task.wait(1)
+                if i % 60 == 0 then print((i/60).." minutes passed") end
+            end
+            ws:Send("READY")
+        else
+            print("Execution failed:", err)
+        end
+    end
+end
+
+-- Main connection handler
 local ws = connectWebSocket()
 
 -- Keep-alive system
 while true do
-    if ws and typeof(ws) == "table" then
-        -- Simple heartbeat
+    if ws and (ws.Connected or ws.IsConnected) then
         pcall(function() ws:Send("PING") end)
     else
         print("Reconnecting...")
