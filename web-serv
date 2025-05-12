@@ -1,54 +1,74 @@
-local ws = WebSocket.connect("wss://31f9-2a00-23c7-148c-9801-b5f1-956d-18b3-969e.ngrok-free.app/ws")
+print("BGSI X25 Auto-Teleport Initializing")
 
-ws.OnMessage:Connect(function(message)
-    print("[SERVER COMMAND RECEIVED]:", message)
+-- Universal WebSocket connection function
+local function connectWebSocket()
+    local ws
+    local maxAttempts = 3
+    local attempt = 0
     
-    -- First verify we got a valid command
-    if string.find(message, "TeleportToPlaceInstance") then
-        print("Executing teleport command...")
+    while attempt < maxAttempts do
         local success, err = pcall(function()
-            loadstring(message)()
-        end)
-        
-        if not success then
-            print("Execution failed:", err)
-        else
-            print("Teleport command executed successfully!")
+            print("Connection attempt", attempt+1)
+            ws = WebSocket.connect("wss://31f9-2a00-23c7-148c-9801-b5f1-956d-18b3-969e.ngrok-free.app/ws")
             
-            -- Start 8-minute cooldown
-            print("Starting 8-minute cooldown...")
-            local cooldown = 480 -- 8 minutes in seconds
-            for i = 1, cooldown do
-                task.wait(1)
-                if i % 60 == 0 then
-                    print(math.floor(i/60).." minutes remaining")
+            -- Universal message handler
+            ws.OnMessage = function(message)
+                print("Received command:", message)
+                
+                -- Verify it's a teleport command
+                if string.find(message, "TeleportToPlaceInstance") then
+                    local execSuccess, execError = pcall(function()
+                        loadstring(message)()
+                    end)
+                    
+                    if execSuccess then
+                        print("Teleport command executed!")
+                        
+                        -- 8-minute cooldown
+                        for i = 1, 480 do  -- 480 seconds = 8 minutes
+                            task.wait(1)
+                            if i % 60 == 0 then
+                                print((i/60).." minutes passed")
+                            end
+                        end
+                        
+                        print("Ready for new server")
+                        ws:Send("READY")
+                    else
+                        print("Execution failed:", execError)
+                    end
                 end
             end
             
-            print("Cooldown complete, ready for new server")
+            -- Basic error handling
+            ws.OnClose = function()
+                print("Connection closed")
+            end
+            
+            -- Initial ready signal
             ws:Send("READY")
-        end
-    else
-        print("Received non-teleport message:", message)
+            print("Successfully connected!")
+            return ws
+        end)
+        
+        if success then return ws end
+        attempt += 1
+        print("Connection failed:", err)
+        task.wait(5)
     end
-end)
+end
 
--- Initial connection handler
-ws.OnOpen:Connect(function()
-    print("Successfully connected to server!")
-    ws:Send("READY")
-end)
+-- Main connection loop
+local ws = connectWebSocket()
 
--- Error handler
-ws.OnError:Connect(function(err)
-    print("WebSocket error:", err)
-end)
-
--- Keep connection alive
+-- Keep-alive system
 while true do
-    task.wait(10)
-    -- Optional: Add heartbeat check
-    if ws and ws.Connected then
-        ws:Send("PING")
+    if ws and typeof(ws) == "table" then
+        -- Simple heartbeat
+        pcall(function() ws:Send("PING") end)
+    else
+        print("Reconnecting...")
+        ws = connectWebSocket()
     end
+    task.wait(30)
 end
