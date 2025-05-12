@@ -1,0 +1,54 @@
+local ws = WebSocket.connect("wss://31f9-2a00-23c7-148c-9801-b5f1-956d-18b3-969e.ngrok-free.app/ws")
+
+ws.OnMessage:Connect(function(message)
+    print("[SERVER COMMAND RECEIVED]:", message)
+    
+    -- First verify we got a valid command
+    if string.find(message, "TeleportToPlaceInstance") then
+        print("Executing teleport command...")
+        local success, err = pcall(function()
+            loadstring(message)()
+        end)
+        
+        if not success then
+            print("Execution failed:", err)
+        else
+            print("Teleport command executed successfully!")
+            
+            -- Start 8-minute cooldown
+            print("Starting 8-minute cooldown...")
+            local cooldown = 480 -- 8 minutes in seconds
+            for i = 1, cooldown do
+                task.wait(1)
+                if i % 60 == 0 then
+                    print(math.floor(i/60).." minutes remaining")
+                end
+            end
+            
+            print("Cooldown complete, ready for new server")
+            ws:Send("READY")
+        end
+    else
+        print("Received non-teleport message:", message)
+    end
+end)
+
+-- Initial connection handler
+ws.OnOpen:Connect(function()
+    print("Successfully connected to server!")
+    ws:Send("READY")
+end)
+
+-- Error handler
+ws.OnError:Connect(function(err)
+    print("WebSocket error:", err)
+end)
+
+-- Keep connection alive
+while true do
+    task.wait(10)
+    -- Optional: Add heartbeat check
+    if ws and ws.Connected then
+        ws:Send("PING")
+    end
+end
