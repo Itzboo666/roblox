@@ -1,124 +1,168 @@
-local WebSocket = require("websocket") -- Make sure you have a WebSocket library installed
-local json = require("json") -- For JSON handling if needed
+--------------------------------------------------
+-- UNIVERSAL WEBSOCKET CLIENT FOR NGROK
+-- Works in most Lua environments (Lua 5.1+/LuaJIT/Corona)
+--------------------------------------------------
 
--- Configuration
-local WS_URL = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app"
-local RECONNECT_DELAY = 5 -- seconds between reconnect attempts
-local HEARTBEAT_INTERVAL = 25 -- seconds between ping frames
-
--- Global variables
-local ws = nil
-local reconnectTimer = nil
-local heartbeatTimer = nil
-local isConnected = false
-
--- Main connection function
-function connect()
-    print("["..os.date("%H:%M:%S").."] --> Attempting to connect to "..WS_URL)
-    
-    -- Create new WebSocket instance
-    ws = WebSocket.client(WS_URL)
-    
-    -- Set up event handlers
-    ws:on("open", function()
-        print("["..os.date("%H:%M:%S").."] --> Connected to server!")
-        isConnected = true
-        
-        -- Start heartbeat
-        startHeartbeat()
-        
-        -- Cancel any pending reconnection attempts
-        if reconnectTimer then
-            timer.cancel(reconnectTimer)
-            reconnectTimer = nil
+local function loadDependencies()
+    -- Try all possible JSON and WebSocket combinations
+    local json = (function()
+        for _, pkg in ipairs({"dkjson", "cjson", "json"}) do
+            local ok, mod = pcall(require, pkg)
+            if ok then return mod end
         end
-    end)
-    
-    ws:on("message", function(msg)
-        print("["..os.date("%H:%M:%S").."] <-- Received: "..tostring(msg))
-        -- Process incoming messages here
-    end)
-    
-    ws:on("close", function(code, reason)
-        print("["..os.date("%H:%M:%S").."] --> Connection closed: "..tostring(code).." - "..tostring(reason))
-        handleDisconnection()
-    end)
-    
-    ws:on("error", function(err)
-        print("["..os.date("%H:%M:%S").."] --> WebSocket error: "..tostring(err))
-        handleDisconnection()
-    end)
-    
-    -- Start connection
-    ws:connect()
-end
+        return {encode=function(t) return tostring(t) end, decode=function(s) return s end}
+    end)()
 
--- Handle disconnection and schedule reconnection
-function handleDisconnection()
-    isConnected = false
-    
-    -- Clean up existing connection
-    if ws then
-        ws:close()
-        ws = nil
-    end
-    
-    -- Stop heartbeat
-    stopHeartbeat()
-    
-    -- Schedule reconnection if not already attempting
-    if not reconnectTimer then
-        print("["..os.date("%H:%M:%S").."] --> Attempting to reconnect in "..RECONNECT_DELAY.." seconds...")
-        reconnectTimer = timer.performWithDelay(RECONNECT_DELAY * 1000, function()
-            reconnectTimer = nil
-            connect()
-        end)
-    end
-end
-
--- Heartbeat functions
-function startHeartbeat()
-    stopHeartbeat() -- Clear any existing heartbeat
-    
-    local function sendPing()
-        if isConnected and ws then
-            ws:send(json.encode({type = "ping", timestamp = os.time()}))
+    -- WebSocket loader with multiple fallbacks
+    local websocket = (function()
+        -- Try popular WebSocket libraries
+        for _, pkg in ipairs({
+            "websocket.client",  -- lua-websockets
+            "socket.websocket",  -- Corona SDK
+            "websocket",         -- generic
+            "lua-websockets.websocket"
+        }) do
+            local ok, mod = pcall(require, pkg)
+            if ok then return mod end
         end
-    end
-    
-    -- Send immediate ping
-    sendPing()
-    
-    -- Set up periodic ping
-    heartbeatTimer = timer.performWithDelay(HEARTBEAT_INTERVAL * 1000, sendPing, 0)
+
+        -- Last resort: embedded minimal client (no SSL)
+        if pcall(require, "socket") then
+            return {
+                client = function(url)
+                    local socket = require("socket")
+                    local tcp = socket.tcp()
+                    local host, port = url:match("ws://([^:/]+):?(%d*)")
+                    port = port ~= "" and port or 80
+                    
+                    return {
+                        connect = function()
+                            return tcp:connect(host, port)
+                        end,
+                        send = function(data)
+                            return tcp:send(data)
+                        end,
+                        receive = function()
+                            return tcp:receive("*l")
+                        end,
+                        close = function()
+                            return tcp:close()
+                        end
+                    }
+                end
+            }
+        end
+
+        return nil
+    end)()
+
+    return json, websocket
 end
 
-function stopHeartbeat()
-    if heartbeatTimer then
-        timer.cancel(heartbeatTimer)
-        heartbeatTimer = nil
-    end
+local json, websocket = loadDependencies()
+if not websocket then
+    print("ERROR: No WebSocket library found. Install one of:")
+    print("1. luarocks install lua-websockets")
+    print("2. Install Corona SDK for built-in WebSocket")
+    print("3. luarocks install luasocket (basic TCP only)")
+    return
 end
 
--- Example send function
-function sendData(data)
-    if not isConnected or not ws then
-        print("["..os.date("%H:%M:%S").."] --> Not connected, cannot send data")
+--------------------------------------------------
+-- CONNECTION MANAGER
+--------------------------------------------------
+local WS = {
+    url = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app",
+    conn = nil,
+    retry_delay = 5,
+    is_connected = false
+}
+
+function WS:connect()
+    -- Cleanup previous connection
+    if self.conn then self.conn:close() end
+
+    print(string.format("[%s] Connecting to %s...", os.date("%H:%M:%S"), self.url))
+    
+    -- Create connection with timeout
+    local ok, conn = pcall(function()
+        local client = websocket.client({
+            timeout = 10000,  -- 10 second connection timeout
+            headers = {
+                ["User-Agent"] = "LuaWebSocketClient",
+                ["Origin"] = "https://ngrok-free.app"
+            }
+        })
+        return client.connect(self.url)
+    end)
+
+    if not ok or not conn then
+        print(string.format("[%s] Connection failed: %s", os.date("%H:%M:%S"), conn or "unknown error"))
+        self:schedule_reconnect()
         return false
     end
+
+    self.conn = conn
+    self.is_connected = true
+    print(string.format("[%s] Connected successfully!", os.date("%H:%M:%S")))
     
-    local success, err = pcall(function()
-        ws:send(json.encode(data))
+    -- Start heartbeat
+    self:start_heartbeat()
+    
+    return true
+end
+
+function WS:send(data)
+    if not self.is_connected then return false end
+    
+    local ok, err = pcall(function()
+        if type(data) ~= "string" then
+            data = json.encode(data)
+        end
+        return self.conn:send(data)
     end)
     
-    if not success then
-        print("["..os.date("%H:%M:%S").."] --> Error sending data: "..tostring(err))
-        handleDisconnection()
+    if not ok then
+        print(string.format("[%s] Send error: %s", os.date("%H:%M:%S"), err))
+        self:handle_disconnect()
         return false
     end
     
     return true
 end
 
--- Initial connection
-connect()
+function WS:start_heartbeat()
+    if self.heartbeat_timer then return end
+    
+    self.heartbeat_timer = timer.performWithDelay(25000, function()
+        WS:send({type = "heartbeat", time = os.time()})
+    end, 0)
+end
+
+function WS:handle_disconnect()
+    self.is_connected = false
+    if self.heartbeat_timer then
+        timer.cancel(self.heartbeat_timer)
+        self.heartbeat_timer = nil
+    end
+    self:schedule_reconnect()
+end
+
+function WS:schedule_reconnect()
+    if self.reconnect_timer then return end
+    
+    print(string.format("[%s] Will reconnect in %d seconds...", os.date("%H:%M:%S"), self.retry_delay))
+    
+    self.reconnect_timer = timer.performWithDelay(self.retry_delay * 1000, function()
+        self.reconnect_timer = nil
+        self:connect()
+    end)
+end
+
+--------------------------------------------------
+-- INITIALIZE AND START CONNECTION
+--------------------------------------------------
+WS:connect()
+
+-- Example usage:
+-- WS:send({command = "ping", data = "test"})
