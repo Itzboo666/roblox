@@ -20,6 +20,7 @@ print("[Ronix Executor] Starting HTTP polling loop...")
 while true do
     local now = os.time()
     
+    -- Skip polling entirely if still on cooldown
     if now - lastTeleport >= COOLDOWN_TIME then
         local response = request({
             Url = POLL_ENDPOINT,
@@ -32,6 +33,7 @@ while true do
 
             if command and command:find("TeleportService") then
                 print("[Poll] Received command:", command)
+                
                 local func, err = loadstring(command)
                 if func then
                     print("[Poll] Executing teleport...")
@@ -40,13 +42,14 @@ while true do
                 else
                     warn("[Poll] Failed to compile command:", err)
                 end
+            else
+                print("[Poll] No teleport command available.")
             end
         else
-            warn("[Poll] Failed to get a valid response. Status:", response and response.StatusCode)
+            warn("[Poll] Failed to get response. Status:", response and response.StatusCode)
         end
     else
-        local remaining = COOLDOWN_TIME - (now - lastTeleport)
-        print(("[Cooldown] %d seconds remaining..."):format(remaining))
+        print("[Cooldown] Active. Skipping poll.")
     end
 
     task.wait(5) -- check every 5 seconds
