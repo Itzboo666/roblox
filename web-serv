@@ -25,11 +25,16 @@ print("Connected to WebSocket server")
 
 local function safeTeleport(jobId)
 	local now = os.time()
+	print("safeTeleport called with jobId:", jobId)
+	print("Last teleport:", lastTeleport, "Now:", now)
+
 	if now - lastTeleport < COOLDOWN_TIME then
 		warn(("Teleport on cooldown: %d seconds remaining"):format(COOLDOWN_TIME - (now - lastTeleport)))
 		return
 	end
+
 	lastTeleport = now
+	print("Teleporting now to:", jobId)
 	TeleportService:TeleportToPlaceInstance(PLACE_ID, jobId)
 end
 
