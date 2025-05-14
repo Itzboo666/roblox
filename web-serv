@@ -1,14 +1,27 @@
-local TeleportService   = game:GetService("TeleportService")
-local WebSocketService  = game:GetService("WebSocketService")
-local HttpService       = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 
 -- CONFIG
-local PLACE_ID       = 85896571713843
-local WS_URL         = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws" -- Replace with your actual URL
-local COOLDOWN_TIME  = 8 * 60  -- 8 minutes
+local PLACE_ID = 85896571713843
+local WS_URL = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
+local COOLDOWN_TIME = 8 * 60
 
--- state
-local lastTeleport   = 0
+-- STATE
+local lastTeleport = 0
+
+-- ensure WebSocket API is available
+local WebSocket = WebSocket or (WebSocketService and WebSocketService.ConnectAsync) or syn and syn.websocket
+if not WebSocket then
+    warn("WebSocket not supported in this executor.")
+    return
+end
+
+local ws = WebSocket.connect and WebSocket.connect(WS_URL) or nil
+if not ws then
+    warn("WebSocket connection failed.")
+    return
+end
+
+print("Connected to WebSocket server")
 
 local function safeTeleport(jobId)
 	local now = os.time()
@@ -20,7 +33,7 @@ local function safeTeleport(jobId)
 	TeleportService:TeleportToPlaceInstance(PLACE_ID, jobId)
 end
 
-local function onMessage(message)
+ws.OnMessage:Connect(function(message)
 	if message:match("%w+%-%w+%-%w+%-%w+%-%w+") then
 		safeTeleport(message)
 	else
@@ -31,28 +44,8 @@ local function onMessage(message)
 			warn("Failed to execute command: ".. tostring(err))
 		end
 	end
-end
+end)
 
-local function connect()
-	local success, socketOrErr = pcall(function()
-		return WebSocketService:ConnectAsync(WS_URL)
-	end)
-
-	if not success then
-		warn("WebSocket connection failed:", socketOrErr)
-		task.delay(5, connect)
-		return
-	end
-
-	local ws = socketOrErr
-	print("Connected to WebSocket server")
-
-	ws.OnMessage:Connect(onMessage)
-
-	ws.OnClose:Connect(function(code, reason)
-		warn("WebSocket closed:", code, reason)
-		task.delay(5, connect)
-	end)
-end
-
-connect()
+ws.OnClose:Connect(function(code, reason)
+	warn("WebSocket closed:", code, reason)
+end)
