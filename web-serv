@@ -2,7 +2,7 @@ local TeleportService = game:GetService("TeleportService")
 
 -- CONFIG
 local PLACE_ID = 85896571713843
-local WS_URL = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
+local WS_URL = "wss://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
 local COOLDOWN_TIME = 8 * 60
 
 -- STATE
