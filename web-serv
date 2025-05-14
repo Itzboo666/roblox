@@ -1,81 +1,74 @@
 -- CONFIGURATION
-local NGROK_URL = "https://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app"
-local POLL_ENDPOINT = NGROK_URL .. "/next"
-local COOLDOWN_TIME = 4 * 60  -- 4 minutes
+local WS_URL = "wss://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
+local PLACE_ID = 85896571713843
+local COOLDOWN_TIME = 8 * 60  -- 8 minutes
 
 -- SERVICES
-local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 
+local os_time = os.time
 local lastTeleport = 0
-local currentJobId = nil
 local isTeleporting = false
 
--- HTTP FUNCTION
-local request = http and http.request or syn and syn.request
-if not request then
-    warn("This executor does not support http.request or syn.request.")
+-- Executor Compatibility
+local wsSupport = WebSocketService or (WebSocket and WebSocket.connect)
+if not wsSupport then
+    warn("WebSocket not supported in this executor.")
     return
 end
 
--- Listen for teleport failures
-TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+-- Connect to WebSocket
+local socket
+local success, err = pcall(function()
+    socket = (WebSocketService and WebSocketService:ConnectAsync(WS_URL)) or WebSocket.connect(WS_URL)
+end)
+
+if not success or not socket then
+    warn("[WebSocket] Connection failed:", err)
+    return
+end
+
+print("[WebSocket] Connected to server")
+
+-- Handle teleport errors (e.g., experience full)
+TeleportService.TeleportInitFailed:Connect(function(player, result, message)
     if player == localPlayer then
-        warn("[Teleport] Failed: " .. tostring(errorMessage))
-        if teleportResult == Enum.TeleportResult.GameFull then
-            print("[Teleport] Experience full. Ignoring this JobID and resetting cooldown.")
-            lastTeleport = 0
-            currentJobId = nil
+        warn("[Teleport Failed]", result, message)
+        if result == Enum.TeleportResult.GameFull then
+            lastTeleport = 0  -- cancel cooldown
             isTeleporting = false
         end
     end
 end)
 
-print("[Ronix Executor] Starting HTTP polling loop...")
-
-while true do
-    local now = os.time()
-
+-- Listen for commands
+socket.OnMessage:Connect(function(command)
+    print("[WebSocket] Received:", command)
     if isTeleporting then
-        task.wait(5)
-        continue
+        warn("[Cooldown] Ignoring due to active cooldown.")
+        return
     end
 
-    if now - lastTeleport >= COOLDOWN_TIME then
-        local response = request({
-            Url = POLL_ENDPOINT,
-            Method = "GET"
-        })
-
-        if response and response.StatusCode == 200 then
-            local data = HttpService:JSONDecode(response.Body)
-            local command = data.command
-
-            if command and command:find("TeleportService") then
-                print("[Poll] Received command:", command)
-
-                local func, err = loadstring(command)
-                if func then
-                    print("[Poll] Executing teleport...")
-                    isTeleporting = true
-                    currentJobId = tostring(command:match('%("(%x%-%x%-%x%-%x%-%x)"%)'))
-                    lastTeleport = now
-                    func()
-                else
-                    warn("[Poll] Failed to compile command:", err)
-                end
-            else
-                print("[Poll] No teleport command available.")
-            end
-        else
-            warn("[Poll] Failed to get response. Status:", response and response.StatusCode)
-        end
-    else
-        local remaining = COOLDOWN_TIME - (now - lastTeleport)
-        print(("[Cooldown] %d seconds remaining..."):format(remaining))
+    if os_time() - lastTeleport < COOLDOWN_TIME then
+        warn("[Cooldown] Still active. Skipping.")
+        return
     end
 
-    task.wait(5)
-end
+    local func, err = loadstring(command)
+    if not func then
+        warn("[WebSocket] Invalid command:", err)
+        return
+    end
+
+    lastTeleport = os_time()
+    isTeleporting = true
+    print("[Teleport] Executing command")
+    func()
+end)
+
+-- Reconnect on close
+socket.OnClose:Connect(function()
+    warn("[WebSocket] Connection closed.")
+end)
