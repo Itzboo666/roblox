@@ -1,46 +1,52 @@
+-- CONFIGURATION
+local NGROK_URL = "https://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app"
+local POLL_ENDPOINT = NGROK_URL .. "/next"
+local COOLDOWN_TIME = 8 * 60  -- 8 minutes
+
+-- SERVICES
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
-
-local PLACE_ID = 85896571713843
-local NGROK_URL = "https://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app"
-local COOLDOWN = 8 * 60
 local lastTeleport = 0
 
--- Replace with your executor's HTTP request function
+-- EXECUTOR HTTP FUNCTION
 local request = http and http.request or syn and syn.request
 if not request then
-    warn("Your executor does not support http.request or syn.request")
+    warn("This executor does not support http.request or syn.request.")
     return
 end
 
-print("Starting HTTP polling loop...")
+print("[Ronix Executor] Starting HTTP polling loop...")
 
 while true do
     local now = os.time()
-    if now - lastTeleport >= COOLDOWN then
-        local res = request({
-            Url = NGROK_URL .. "/next",
+    
+    if now - lastTeleport >= COOLDOWN_TIME then
+        local response = request({
+            Url = POLL_ENDPOINT,
             Method = "GET"
         })
 
-        if res and res.StatusCode == 200 then
-            local body = HttpService:JSONDecode(res.Body)
-            local command = body.command
+        if response and response.StatusCode == 200 then
+            local data = HttpService:JSONDecode(response.Body)
+            local command = data.command
 
             if command and command:find("TeleportService") then
-                print("[Poll] Executing teleport command:", command)
+                print("[Poll] Received command:", command)
                 local func, err = loadstring(command)
                 if func then
+                    print("[Poll] Executing teleport...")
                     lastTeleport = now
                     func()
                 else
-                    warn("[Poll] Failed to run:", err)
+                    warn("[Poll] Failed to compile command:", err)
                 end
             end
+        else
+            warn("[Poll] Failed to get a valid response. Status:", response and response.StatusCode)
         end
     else
-        local waitTime = COOLDOWN - (now - lastTeleport)
-        print(("[Cooldown] %ds remaining..."):format(waitTime))
+        local remaining = COOLDOWN_TIME - (now - lastTeleport)
+        print(("[Cooldown] %d seconds remaining..."):format(remaining))
     end
 
     task.wait(5) -- check every 5 seconds
