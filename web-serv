@@ -1,49 +1,47 @@
--- CONFIG
-local WS_URL = "wss://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
-local COOLDOWN = 8 * 60 -- seconds
-local lastTeleport = 0
-
--- SERVICES
-local WebSocketService = game:GetService("WebSocketService")
+local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 
--- CONNECT FUNCTION
-local function connect()
-	local success, socket = pcall(function()
-		return WebSocketService:ConnectAsync(WS_URL)
-	end)
+local PLACE_ID = 85896571713843
+local NGROK_URL = "https://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app"
+local COOLDOWN = 8 * 60
+local lastTeleport = 0
 
-	if not success or not socket then
-		warn("[WebSocket] Connection failed:", socket)
-		return
-	end
-
-	print("[WebSocket] Connected to server.")
-
-	-- On message from server
-	socket.OnMessage:Connect(function(message)
-		print("[WebSocket] Received message:", message)
-
-		local now = os.time()
-		if now - lastTeleport < COOLDOWN then
-			warn(("[Cooldown] Skipping teleport, %d seconds left."):format(COOLDOWN - (now - lastTeleport)))
-			return
-		end
-
-		local func, err = loadstring(message)
-		if func then
-			print("[WebSocket] Executing command...")
-			lastTeleport = now
-			func()
-		else
-			warn("[WebSocket] Invalid script received:", err)
-		end
-	end)
-
-	socket.OnClose:Connect(function(code, reason)
-		warn(("[WebSocket] Connection closed (%d): %s"):format(code, tostring(reason)))
-	end)
+-- Replace with your executor's HTTP request function
+local request = http and http.request or syn and syn.request
+if not request then
+    warn("Your executor does not support http.request or syn.request")
+    return
 end
 
--- START
-connect()
+print("Starting HTTP polling loop...")
+
+while true do
+    local now = os.time()
+    if now - lastTeleport >= COOLDOWN then
+        local res = request({
+            Url = NGROK_URL .. "/next",
+            Method = "GET"
+        })
+
+        if res and res.StatusCode == 200 then
+            local body = HttpService:JSONDecode(res.Body)
+            local command = body.command
+
+            if command and command:find("TeleportService") then
+                print("[Poll] Executing teleport command:", command)
+                local func, err = loadstring(command)
+                if func then
+                    lastTeleport = now
+                    func()
+                else
+                    warn("[Poll] Failed to run:", err)
+                end
+            end
+        end
+    else
+        local waitTime = COOLDOWN - (now - lastTeleport)
+        print(("[Cooldown] %ds remaining..."):format(waitTime))
+    end
+
+    task.wait(5) -- check every 5 seconds
+end
