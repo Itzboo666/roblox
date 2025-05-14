@@ -1,74 +1,124 @@
--- Universal BGSI X25 Auto-Teleport Script
-print("BGSI X25 Auto-Teleport Initializing")
+local WebSocket = require("websocket") -- Make sure you have a WebSocket library installed
+local json = require("json") -- For JSON handling if needed
 
--- WebSocket initialization for all executors
-local websocket_api = {
-    ["Synapse"] = function(url) return syn.websocket.connect(url) end,
-    ["Krnl"] = function(url) return WebSocket.connect(url) end,
-    ["Fluxus"] = function(url) return fluxus.websocket(url) end,
-    ["Default"] = function(url) return WebSocket.connect(url) end
-}
+-- Configuration
+local WS_URL = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app"
+local RECONNECT_DELAY = 5 -- seconds between reconnect attempts
+local HEARTBEAT_INTERVAL = 25 -- seconds between ping frames
 
-local function get_websocket(url)
-    for name, func in pairs(websocket_api) do
-        local success, ws = pcall(func, url)
-        if success then 
-            print("Using "..name.." WebSocket API")
-            return ws 
-        end
-    end
-    error("No working WebSocket API found")
-end
+-- Global variables
+local ws = nil
+local reconnectTimer = nil
+local heartbeatTimer = nil
+local isConnected = false
 
-local function process_command(message, ws)
-    print("Executing:", message)
-    local success, err = pcall(loadstring(message))
-    if success then
-        print("Teleport successful! Starting 8-minute cooldown...")
-        for i = 1, 480 do
-            task.wait(1)
-            if i % 60 == 0 then print((i//60).." minute(s) passed") end
-        end
-        ws:Send("READY")
-    else
-        print("Error executing:", err)
-    end
-end
-
-local function connect_websocket()
-    local ws
-    local url = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
+-- Main connection function
+function connect()
+    print("["..os.date("%H:%M:%S").."] --> Attempting to connect to "..WS_URL)
     
-    while true do
-        local success, err = pcall(function()
-            ws = get_websocket(url)
-            
-            if ws.OnMessage then
-                ws.OnMessage:Connect(function(m) process_command(m, ws) end)
-            else
-                ws.OnMessage = function(m) process_command(m, ws) end
-            end
-            
-            ws:Send("READY")
-            print("Connected to server!")
-            return ws
-        end)
+    -- Create new WebSocket instance
+    ws = WebSocket.client(WS_URL)
+    
+    -- Set up event handlers
+    ws:on("open", function()
+        print("["..os.date("%H:%M:%S").."] --> Connected to server!")
+        isConnected = true
         
-        if success then return ws end
-        print("Connection failed:", err)
-        task.wait(5)
+        -- Start heartbeat
+        startHeartbeat()
+        
+        -- Cancel any pending reconnection attempts
+        if reconnectTimer then
+            timer.cancel(reconnectTimer)
+            reconnectTimer = nil
+        end
+    end)
+    
+    ws:on("message", function(msg)
+        print("["..os.date("%H:%M:%S").."] <-- Received: "..tostring(msg))
+        -- Process incoming messages here
+    end)
+    
+    ws:on("close", function(code, reason)
+        print("["..os.date("%H:%M:%S").."] --> Connection closed: "..tostring(code).." - "..tostring(reason))
+        handleDisconnection()
+    end)
+    
+    ws:on("error", function(err)
+        print("["..os.date("%H:%M:%S").."] --> WebSocket error: "..tostring(err))
+        handleDisconnection()
+    end)
+    
+    -- Start connection
+    ws:connect()
+end
+
+-- Handle disconnection and schedule reconnection
+function handleDisconnection()
+    isConnected = false
+    
+    -- Clean up existing connection
+    if ws then
+        ws:close()
+        ws = nil
+    end
+    
+    -- Stop heartbeat
+    stopHeartbeat()
+    
+    -- Schedule reconnection if not already attempting
+    if not reconnectTimer then
+        print("["..os.date("%H:%M:%S").."] --> Attempting to reconnect in "..RECONNECT_DELAY.." seconds...")
+        reconnectTimer = timer.performWithDelay(RECONNECT_DELAY * 1000, function()
+            reconnectTimer = nil
+            connect()
+        end)
     end
 end
 
--- Main execution
-local ws = connect_websocket()
-
-while true do
-    if ws and (ws.Connected ~= false) then
-        pcall(function() ws:Send("PING") end)
-    else
-        print("Reconnecting...")
-        ws = connect_websocket()
+-- Heartbeat functions
+function startHeartbeat()
+    stopHeartbeat() -- Clear any existing heartbeat
+    
+    local function sendPing()
+        if isConnected and ws then
+            ws:send(json.encode({type = "ping", timestamp = os.time()}))
+        end
     end
-    task.wait(30)
+    
+    -- Send immediate ping
+    sendPing()
+    
+    -- Set up periodic ping
+    heartbeatTimer = timer.performWithDelay(HEARTBEAT_INTERVAL * 1000, sendPing, 0)
 end
+
+function stopHeartbeat()
+    if heartbeatTimer then
+        timer.cancel(heartbeatTimer)
+        heartbeatTimer = nil
+    end
+end
+
+-- Example send function
+function sendData(data)
+    if not isConnected or not ws then
+        print("["..os.date("%H:%M:%S").."] --> Not connected, cannot send data")
+        return false
+    end
+    
+    local success, err = pcall(function()
+        ws:send(json.encode(data))
+    end)
+    
+    if not success then
+        print("["..os.date("%H:%M:%S").."] --> Error sending data: "..tostring(err))
+        handleDisconnection()
+        return false
+    end
+    
+    return true
+end
+
+-- Initial connection
+connect()
