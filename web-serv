@@ -6,21 +6,43 @@ local COOLDOWN_TIME = 8 * 60  -- 8 minutes
 -- SERVICES
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
-local lastTeleport = 0
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
 
--- EXECUTOR HTTP FUNCTION
+local lastTeleport = 0
+local currentJobId = nil
+local isTeleporting = false
+
+-- HTTP FUNCTION
 local request = http and http.request or syn and syn.request
 if not request then
     warn("This executor does not support http.request or syn.request.")
     return
 end
 
+-- Listen for teleport failures
+TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage)
+    if player == localPlayer then
+        warn("[Teleport] Failed: " .. tostring(errorMessage))
+        if teleportResult == Enum.TeleportResult.GameFull then
+            print("[Teleport] Experience full. Ignoring this JobID and resetting cooldown.")
+            lastTeleport = 0
+            currentJobId = nil
+            isTeleporting = false
+        end
+    end
+end)
+
 print("[Ronix Executor] Starting HTTP polling loop...")
 
 while true do
     local now = os.time()
-    
-    -- Skip polling entirely if still on cooldown
+
+    if isTeleporting then
+        task.wait(5)
+        continue
+    end
+
     if now - lastTeleport >= COOLDOWN_TIME then
         local response = request({
             Url = POLL_ENDPOINT,
@@ -33,10 +55,12 @@ while true do
 
             if command and command:find("TeleportService") then
                 print("[Poll] Received command:", command)
-                
+
                 local func, err = loadstring(command)
                 if func then
                     print("[Poll] Executing teleport...")
+                    isTeleporting = true
+                    currentJobId = tostring(command:match('%("(%x%-%x%-%x%-%x%-%x)"%)'))
                     lastTeleport = now
                     func()
                 else
@@ -49,8 +73,9 @@ while true do
             warn("[Poll] Failed to get response. Status:", response and response.StatusCode)
         end
     else
-        print("[Cooldown] Active. Skipping poll.")
+        local remaining = COOLDOWN_TIME - (now - lastTeleport)
+        print(("[Cooldown] %d seconds remaining..."):format(remaining))
     end
 
-    task.wait(5) -- check every 5 seconds
+    task.wait(5)
 end
