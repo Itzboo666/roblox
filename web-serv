@@ -1,45 +1,58 @@
-local socket = require("socket")  -- Built into Lua for Windows/LuaDist
+local TeleportService   = game:GetService("TeleportService")
+local WebSocketService  = game:GetService("WebSocketService")
+local HttpService       = game:GetService("HttpService")
 
-local function connect_websocket()
-    local ngrok_url = "ws://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app"
-    local host, port = ngrok_url:match("ws://([^:/]+):?(%d*)")
-    port = port or 80  -- Default WebSocket port
+-- CONFIG
+local PLACE_ID       = 85896571713843
+local WS_URL         = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws" -- Replace with your actual URL
+local COOLDOWN_TIME  = 8 * 60  -- 8 minutes
 
-    local tcp = socket.tcp()
-    tcp:settimeout(5)  -- 5-second timeout
+-- state
+local lastTeleport   = 0
 
-    local ok, err = tcp:connect(host, port)
-    if not ok then
-        print("Connection failed: " .. err)
-        return nil
-    end
-
-    -- Upgrade TCP to WebSocket (send handshake)
-    local handshake = "GET / HTTP/1.1\r\n" ..
-                      "Host: " .. host .. "\r\n" ..
-                      "Upgrade: websocket\r\n" ..
-                      "Connection: Upgrade\r\n" ..
-                      "Sec-WebSocket-Key: x3JJHMbDL1EzLkh9GBhXDw==\r\n" ..
-                      "Sec-WebSocket-Version: 13\r\n\r\n"
-    tcp:send(handshake)
-
-    -- Verify response (simplified)
-    local response = tcp:receive("*l")
-    if not response or not response:find("101 Switching Protocols") then
-        print("WebSocket handshake failed: " .. (response or "no reply"))
-        tcp:close()
-        return nil
-    end
-
-    print("Connected to WebSocket!")
-    return tcp
+local function safeTeleport(jobId)
+	local now = os.time()
+	if now - lastTeleport < COOLDOWN_TIME then
+		warn(("Teleport on cooldown: %d seconds remaining"):format(COOLDOWN_TIME - (now - lastTeleport)))
+		return
+	end
+	lastTeleport = now
+	TeleportService:TeleportToPlaceInstance(PLACE_ID, jobId)
 end
 
--- Usage:
-local ws = connect_websocket()
-if ws then
-    ws:send("Hello from Lua!")
-    local reply = ws:receive("*l")  -- Read a line
-    print("Server replied: " .. (reply or "nothing"))
-    ws:close()
+local function onMessage(message)
+	if message:match("%w+%-%w+%-%w+%-%w+%-%w+") then
+		safeTeleport(message)
+	else
+		local func, err = loadstring(message)
+		if func then
+			func()
+		else
+			warn("Failed to execute command: ".. tostring(err))
+		end
+	end
 end
+
+local function connect()
+	local success, socketOrErr = pcall(function()
+		return WebSocketService:ConnectAsync(WS_URL)
+	end)
+
+	if not success then
+		warn("WebSocket connection failed:", socketOrErr)
+		task.delay(5, connect)
+		return
+	end
+
+	local ws = socketOrErr
+	print("Connected to WebSocket server")
+
+	ws.OnMessage:Connect(onMessage)
+
+	ws.OnClose:Connect(function(code, reason)
+		warn("WebSocket closed:", code, reason)
+		task.delay(5, connect)
+	end)
+end
+
+connect()
