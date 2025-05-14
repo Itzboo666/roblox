@@ -4,7 +4,7 @@ getgenv().minimum = 5 -- GOES FROM 5 to 10 to 25
 getgenv().minimumtimer = 120 -- HOW LONG THE TIME CAN BE ON THE CLOCK (SECONDS)
 getgenv().whitelist = "silly-egg" -- SEPARATE WITH '|'
 getgenv().rejointime = 3 -- HOW LONG IT WAITS BETWEEN REJOIN
-getgenv().webhook = "https://discord.com/api/webhooks/1365149550028783758/EFwDPGMHyldZbn6udKoj17RRcJUUQI2jiZkTbdUVIPqKeCPu-TnIeRb7r_90_CU3ruo8"
+getgenv().webhook = ""
 getgenv().automation = false -- WHETHER OR NOT TO FARM STUFF AT THE SAME TIME
 -- IF YOU DON'T WANT A CUSTOM WEBHOOK LEAVE IT A SPACE, NOT EMPTY
 loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/4178d097e6a3ad070374c82316c1b102.lua"))()
