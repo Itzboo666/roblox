@@ -1,82 +1,74 @@
+-- Universal BGSI X25 Auto-Teleport Script
 print("BGSI X25 Auto-Teleport Initializing")
 
--- Universal WebSocket connection handler
-local function connectWebSocket()
+-- WebSocket initialization for all executors
+local websocket_api = {
+    ["Synapse"] = function(url) return syn.websocket.connect(url) end,
+    ["Krnl"] = function(url) return WebSocket.connect(url) end,
+    ["Fluxus"] = function(url) return fluxus.websocket(url) end,
+    ["Default"] = function(url) return WebSocket.connect(url) end
+}
+
+local function get_websocket(url)
+    for name, func in pairs(websocket_api) do
+        local success, ws = pcall(func, url)
+        if success then 
+            print("Using "..name.." WebSocket API")
+            return ws 
+        end
+    end
+    error("No working WebSocket API found")
+end
+
+local function process_command(message, ws)
+    print("Executing:", message)
+    local success, err = pcall(loadstring(message))
+    if success then
+        print("Teleport successful! Starting 8-minute cooldown...")
+        for i = 1, 480 do
+            task.wait(1)
+            if i % 60 == 0 then print((i//60).." minute(s) passed") end
+        end
+        ws:Send("READY")
+    else
+        print("Error executing:", err)
+    end
+end
+
+local function connect_websocket()
     local ws
-    local maxAttempts = 3
-    local attempt = 0
+    local url = "wss://763c-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
     
-    while attempt < maxAttempts do
+    while true do
         local success, err = pcall(function()
-            print("Connection attempt", attempt+1)
+            ws = get_websocket(url)
             
-            -- Universal WebSocket initialization
-            if syn and syn.websocket then
-                ws = syn.websocket.connect("wss://31f9-2a00-23c7-148c-9801-b5f1-956d-18b3-969e.ngrok-free.app/ws")
-            else
-                ws = WebSocket.connect("wss://31f9-2a00-23c7-148c-9801-b5f1-956d-18b3-969e.ngrok-free.app/ws")
-            end
-            
-            -- Universal message handler
             if ws.OnMessage then
-                -- Standard executors (Synapse)
-                ws.OnMessage:Connect(function(message)
-                    processMessage(message, ws)
-                end)
-            elseif ws.OnData then
-                -- Some custom executors
-                ws.OnData:Connect(function(message)
-                    processMessage(message, ws)
-                end)
+                ws.OnMessage:Connect(function(m) process_command(m, ws) end)
             else
-                -- Fallback for basic executors
-                ws.OnMessage = function(message)
-                    processMessage(message, ws)
-                end
+                ws.OnMessage = function(m) process_command(m, ws) end
             end
             
-            -- Connection success
             ws:Send("READY")
-            print("Successfully connected!")
+            print("Connected to server!")
             return ws
         end)
         
         if success then return ws end
-        attempt += 1
         print("Connection failed:", err)
         task.wait(5)
     end
 end
 
--- Universal message processor
-function processMessage(message, ws)
-    print("Received command:", message)
-    
-    if string.find(message, "TeleportToPlaceInstance") then
-        local success, err = pcall(loadstring(message))
-        if success then
-            print("Teleport executed! Starting 8-minute cooldown...")
-            for i = 1, 480 do  -- 8 minutes
-                task.wait(1)
-                if i % 60 == 0 then print((i/60).." minutes passed") end
-            end
-            ws:Send("READY")
-        else
-            print("Execution failed:", err)
-        end
-    end
-end
+-- Main execution
+local ws = connect_websocket()
 
--- Main connection handler
-local ws = connectWebSocket()
-
--- Keep-alive system
 while true do
-    if ws and (ws.Connected or ws.IsConnected) then
+    if ws and (ws.Connected ~= false) then
         pcall(function() ws:Send("PING") end)
     else
         print("Reconnecting...")
-        ws = connectWebSocket()
+        ws = connect_websocket()
     end
     task.wait(30)
 end
