@@ -1,6 +1,7 @@
 -- CONFIGURATION
 local WS_URL        = "wss://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
 local COOLDOWN_TIME = 8 * 60  -- 8 minutes
+setfpscap(30) -- reduce amount of resources being hoarded
 
 -- SERVICES
 local WebSocketService   = game:GetService("WebSocketService")
