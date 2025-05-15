@@ -7,7 +7,7 @@ getgenv().Settings = {
     --// true --> Targets highest luck out of ALL selected rifts.
     --// false --> Targets highest luck out of the BEST selected rift.
 
-    ["Webhook"] = "https://discord.com/api/webhooks/1371106836178276422/d4xAbFC4hzaVuZncKe-MnMtEbD71ZLxwRyLPi9VqlUepEqND8fwKoafiusVaTOqeiXhH",
+    ["Webhook"] = "",
     ["Discord ID"] = "",
     ["Minimum Send Difficulty"] = "2k",
 
