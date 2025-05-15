@@ -1,78 +1,71 @@
--- Load remote bootstrap script
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/web-serv"))()
-
 -- CONFIGURATION
 local WS_URL        = "wss://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app/ws"
-local COOLDOWN_TIME = 8 * 60  -- seconds
+local COOLDOWN_TIME = 8 * 60  -- 8 minutes
 
 -- SERVICES
-local TeleportService = game:GetService("TeleportService")
-local Players         = game:GetService("Players")
-local localPlayer     = Players.LocalPlayer
+local WebSocketService   = game:GetService("WebSocketService")
+local TeleportService    = game:GetService("TeleportService")
+local Players            = game:GetService("Players")
+local localPlayer        = Players.LocalPlayer
+local os_time            = os.time
+local task_wait          = task.wait
 
 -- STATE
-local lastTeleport  = 0
+local lastTeleport = 0
 local isTeleporting = false
 
--- Teleport reset handlers
+-- CONNECT
+local success, socket = pcall(function()
+    return WebSocketService:ConnectAsync(WS_URL)
+end)
+if not success or not socket then
+    warn("[WebSocket] Connection failed:", socket)
+    return
+end
+print("[WebSocket] Connected to server")
+
+-- RESET on completion
 TeleportService.TeleportCompleted:Connect(function()
     isTeleporting = false
     print("[Teleport] Completed, flag reset")
 end)
-TeleportService.TeleportInitFailed:Connect(function(player, result)
+
+-- ALSO reset on failure (GameFull)
+TeleportService.TeleportInitFailed:Connect(function(player, result, message)
     if player == localPlayer and result == Enum.TeleportResult.GameFull then
+        print("[Teleport] GameFull, flag reset")
         isTeleporting = false
-        warn("[Teleport] Server full, flag reset")
     end
 end)
 
--- Determine WebSocket connect function
-local connect
-if type(WebSocket) == "table" and type(WebSocket.connect) == "function" then
-    connect = function(url) return WebSocket.connect(url) end
-elseif type(syn) == "table" and type(syn.websocket) == "function" then
-    connect = function(url) return syn.websocket(url) end
-elseif type(WebSocketService) == "table" and type(WebSocketService.ConnectAsync) == "function" then
-    connect = function(url) return WebSocketService:ConnectAsync(url) end
-else
-    error("No supported WebSocket API found in this executor")
-end
-
--- Establish connection
-local ok, socket = pcall(connect, WS_URL)
-if not ok or not socket then
-    warn("[WebSocket] Connection failed:", socket)
-    return
-end
-print("[WebSocket] Connected via", connect == WebSocketService and "WebSocketService" or "executor API")
-
--- Message handler
-socket.OnMessage:Connect(function(msg)
+-- MESSAGE HANDLER
+socket.OnMessage:Connect(function(message)
+    -- prevent overlap
     if isTeleporting then
-        print("[Lock] Teleport in progress, skipping")
-        return
-    end
-    local now = os.time()
-    if now - lastTeleport < COOLDOWN_TIME then
-        print(("[Cooldown] %d seconds left"):format(COOLDOWN_TIME - (now - lastTeleport)))
+        warn("[Lock] Currently teleporting, skipping message")
         return
     end
 
-    local func, err = loadstring(msg)
+    local now = os_time()
+    if now - lastTeleport < COOLDOWN_TIME then
+        warn(("[Cooldown] %d seconds remaining"):format(COOLDOWN_TIME - (now - lastTeleport)))
+        return
+    end
+
+    -- Now we can grab the command
+    local func, err = loadstring(message)
     if not func then
         warn("[WebSocket] Invalid command:", err)
         return
     end
 
+    -- **Lock and teleport**
     isTeleporting = true
-    lastTeleport  = now
-    print("[Teleport] Executing:", msg)
+    lastTeleport   = now
+    print("[Teleport] Executing command:", message)
     func()
 end)
 
--- Reconnect on close (optional)
-if socket.OnClose then
-    socket.OnClose:Connect(function(code, reason)
-        warn(("[WebSocket] Closed (%d): %s"):format(code, tostring(reason)))
-    end)
-end
+socket.OnClose:Connect(function(code, reason)
+    warn(("[WebSocket] Connection closed (%d): %s"):format(code, tostring(reason)))
+end)
