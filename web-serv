@@ -1,82 +1,76 @@
 -- CONFIG
-local WS_URL       = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
-local CONFIRM_URL  = "https://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/confirm"
-local COOLDOWN_TIME = 8 * 60
+local WS_URL = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
+local COOLDOWN_TIME = 8 * 60 -- 8 minutes
 
 -- SERVICES
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService")
 local localPlayer = Players.LocalPlayer
-local request = http and http.request or syn and syn.request
-if not request then warn("No supported HTTP library found.") return end
 
 -- STATE
 local os_time = os.time
-local blockUntil = 0
+local lastTeleport = 0
 local isTeleporting = false
 
--- Connect WebSocket
+-- WebSocket compatibility
 local connectFn = (WebSocket and WebSocket.connect) or (WebSocketService and WebSocketService.ConnectAsync)
-if not connectFn then warn("WebSocket not supported.") return end
+if not connectFn then
+    warn("This executor doesn't support WebSocket.")
+    return
+end
 
-local ok, socket = pcall(function() return connectFn(WS_URL) end)
-if not ok or not socket then warn("WebSocket connection failed.") return end
+-- Connect
+local success, result = pcall(function()
+    return connectFn(WS_URL)
+end)
+if not success or not result then
+    warn("WebSocket connection failed:", result)
+    return
+end
+
+local socket = result
 print("[WebSocket] Connected.")
 
--- Handlers
-TeleportService.TeleportSucceeded:Connect(function(playerFrom, placeId, jobId)
+-- Handle teleport success/failure
+TeleportService.TeleportSucceeded:Connect(function(_, _, jobId)
     isTeleporting = false
     print("[Teleport] Success to JobID:", jobId)
 end)
 
-TeleportService.TeleportInitFailed:Connect(function(_, result)
-    if result == Enum.TeleportResult.GameFull then
+TeleportService.TeleportInitFailed:Connect(function(player, result)
+    if player == localPlayer and result == Enum.TeleportResult.GameFull then
+        warn("[Teleport] Failed — Game Full. Cooldown cancelled.")
+        lastTeleport = 0
         isTeleporting = false
-        print("[Teleport] Failed (GameFull) — will wait for new job.")
     end
 end)
 
--- Validate job ID with server
-local function confirmJobId(jobId)
-    local resp = request({
-        Url = CONFIRM_URL,
-        Method = "POST",
-        Headers = { ["Content-Type"] = "application/json" },
-        Body = HttpService:JSONEncode({ job_id = jobId })
-    })
-    return resp and resp.StatusCode == 200
-end
-
--- On WebSocket Message
-socket.OnMessage:Connect(function(cmd)
-    if isTeleporting then return end
+-- Handle incoming commands
+socket.OnMessage:Connect(function(command)
     local now = os_time()
-    if now < blockUntil then return end
-
-    local jobId = string.match(cmd, '"([a-f0-9%-]+)"')
-    if not jobId then
-        warn("No JobID found in command")
+    if isTeleporting then
+        warn("[Cooldown] Currently teleporting.")
         return
     end
 
-    local func, err = loadstring(cmd)
+    if now - lastTeleport < COOLDOWN_TIME then
+        warn(("[Cooldown] Active (%d seconds left)."):format(COOLDOWN_TIME - (now - lastTeleport)))
+        return
+    end
+
+    local func, err = loadstring(command)
     if not func then
-        warn("Invalid teleport command:", err)
+        warn("[WebSocket] Invalid command:", err)
         return
     end
 
-    -- Confirm with server
-    if confirmJobId(jobId) then
-        print("[Teleport] Confirmed. Executing:", jobId)
-        blockUntil = now + COOLDOWN_TIME
-        isTeleporting = true
-        func()
-    else
-        warn("[Teleport] JobID mismatch. Skipping.")
-    end
+    isTeleporting = true
+    lastTeleport = now
+    print("[Teleport] Executing command.")
+    func()
 end)
 
+-- On WebSocket close
 if socket.OnClose then
     socket.OnClose:Connect(function()
         warn("[WebSocket] Disconnected.")
