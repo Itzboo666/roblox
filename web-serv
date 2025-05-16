@@ -1,68 +1,78 @@
--- CONFIGURATION
-local WS_URL       = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
-local COOLDOWN_SEC = 8 * 60  -- 8 minutes
+-- AUTO‑EXEC TELEPORT SCRIPT (Ronix‑Compatible)
 
---- SERVICES
-local TeleportService = game:GetService("TeleportService")
+-- CONFIG: point at your ngrok WebSocket
+local WS_URL       = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
+local COOLDOWN_SEC = 8 * 60  -- seconds
+
+-- SERVICES
 local Players         = game:GetService("Players")
-local LocalPlayer     = Players.LocalPlayer
+local TeleportService = game:GetService("TeleportService")
 local os_time         = os.time
 
 -- STATE
 local lastTeleport = 0
-local isTeleporting = false
+local inCooldown   = false
 
--- WebSocket connect (Ronix-compatible)
-local connect = WebSocket and WebSocket.connect or (WebSocketService and WebSocketService.ConnectAsync)
-if not connect then
-    error("This executor doesn't support WebSocket connections.")
+-- HELPER: safe Teleport
+local function doTeleport(jobId)
+    local ok, err = pcall(function()
+        TeleportService:TeleportToPlaceInstance(tonumber(PLACE_ID), jobId)
+    end)
+    if not ok then
+        warn("[Teleport] pcall failed:", err)
+        return false
+    end
+    return true
 end
 
-local ok, socket = pcall(function()
-    return connect(WS_URL)
-end)
-
-if not ok or not socket then
-    error("WebSocket failed to connect: " .. tostring(socket))
-end
-
-print("[WebSocket] Connected")
-
--- Handle GameFull error to cancel cooldown
+-- HANDLE "SERVER FULL" to reset cooldown
 TeleportService.TeleportInitFailed:Connect(function(player, result)
-    if player == LocalPlayer and result == Enum.TeleportResult.GameFull then
-        warn("[Teleport] Server full — cooldown reset")
-        isTeleporting = false
+    if player == Players.LocalPlayer and result == Enum.TeleportResult.GameFull then
+        warn("[Teleport] Server full, resetting")
         lastTeleport = 0
+        inCooldown   = false
     end
 end)
 
--- Message handler
-socket.OnMessage:Connect(function(command)
+-- SETUP WEBSOCKET
+local wsConn
+do
+    -- Ronix exposes WebSocket.connect
+    assert(WebSocket and type(WebSocket.connect) == "function", "WebSocket.connect missing")
+    local ok, sock = pcall(WebSocket.connect, WS_URL)
+    assert(ok and sock, "[WebSocket] connect error: " .. tostring(sock))
+    wsConn = sock
+    print("[WebSocket] Connected to", WS_URL)
+end
+
+-- ON MESSAGE: raw JobID or Lua snippet
+wsConn.OnMessage:Connect(function(msg)
     local now = os_time()
-
-    if isTeleporting or (now - lastTeleport) < COOLDOWN_TIME then
-        local remaining = COOLDOWN_TIME - (now - lastTeleport)
-        print("[Cooldown] Ignored —", math.max(remaining, 0), "seconds left")
+    if inCooldown or now - lastTeleport < COOLDOWN_SEC then
+        local rem = COOLDOWN_SEC - (now - lastTeleport)
+        warn("[Cooldown] skipping, time left:", rem)
         return
     end
 
-    local fn, err = loadstring(command)
-    if not fn then
-        warn("[WebSocket] Invalid Lua:", err)
+    -- Try to extract JobID
+    local jobId = msg:match("([0-9a-f%-]+)")
+    if not jobId then
+        warn("[WebSocket] no jobId in:", msg)
         return
     end
 
-    -- Run teleport
-    print("[Teleport] Executing...")
-    fn()
-    isTeleporting = true
-    lastTeleport = now
-    print("[Cooldown] Engaged for", COOLDOWN_TIME, "seconds")
+    print("[Teleport] Attempting JobID:", jobId)
+    local success = doTeleport(jobId)
+    if success then
+        lastTeleport = now
+        inCooldown   = true
+        print("[Cooldown] engaged for", COOLDOWN_SEC, "sec")
+    end
 end)
 
-if socket.OnClose then
-    socket.OnClose:Connect(function()
-        warn("[WebSocket] Connection closed.")
+-- OPTIONAL: log disconnect
+if wsConn.OnClose then
+    wsConn.OnClose:Connect(function(code, reason)
+        warn("[WebSocket] closed:", code, reason)
     end)
 end
