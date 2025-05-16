@@ -7,68 +7,77 @@ local COOLDOWN_TIME = 8 * 60  -- 8 minutes
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
-
 local os_time = os.time
+
+-- STATE
 local lastTeleport = 0
 local isTeleporting = false
 
--- Executor Compatibility
-local wsSupport = WebSocketService or (WebSocket and WebSocket.connect)
-if not wsSupport then
-    warn("WebSocket not supported in this executor.")
+-- EXECUTOR-COMPATIBLE WEBSOCKET CONNECT
+local socket
+local connectFn = (WebSocket and WebSocket.connect) or (WebSocketService and WebSocketService.ConnectAsync)
+
+if not connectFn then
+    warn("[WebSocket] Not supported in this executor.")
     return
 end
 
--- Connect to WebSocket
-local socket
-local success, err = pcall(function()
-    socket = (WebSocketService and WebSocketService:ConnectAsync(WS_URL)) or WebSocket.connect(WS_URL)
+-- Try connection
+local success, result = pcall(function()
+    return connectFn(WS_URL)
 end)
 
-if not success or not socket then
-    warn("[WebSocket] Connection failed:", err)
+if not success or not result then
+    warn("[WebSocket] Connection failed:", result)
     return
 end
 
-print("[WebSocket] Connected to server")
+socket = result
+print("[WebSocket] Connected to:", WS_URL)
 
--- Handle teleport errors (e.g., experience full)
+-- Reset cooldown on GameFull failure
 TeleportService.TeleportInitFailed:Connect(function(player, result, message)
-    if player == localPlayer then
-        warn("[Teleport Failed]", result, message)
-        if result == Enum.TeleportResult.GameFull then
-            lastTeleport = 0  -- cancel cooldown
-            isTeleporting = false
-        end
+    if player == localPlayer and result == Enum.TeleportResult.GameFull then
+        warn("[Teleport Failed] Server full — resetting cooldown")
+        lastTeleport = 0
+        isTeleporting = false
     end
 end)
 
--- Listen for commands
+-- Optional: reset lock after successful teleport (failsafe)
+TeleportService.TeleportCompleted:Connect(function()
+    isTeleporting = false
+    print("[Teleport] Completed — cooldown active")
+end)
+
+-- Handle incoming teleport command
 socket.OnMessage:Connect(function(command)
     print("[WebSocket] Received:", command)
+
     if isTeleporting then
-        warn("[Cooldown] Ignoring due to active cooldown.")
+        warn("[Status] Already teleporting — skipping")
         return
     end
 
-    if os_time() - lastTeleport < COOLDOWN_TIME then
-        warn("[Cooldown] Still active. Skipping.")
+    local now = os_time()
+    if now - lastTeleport < COOLDOWN_TIME then
+        warn(("[Cooldown] %d seconds remaining"):format(COOLDOWN_TIME - (now - lastTeleport)))
         return
     end
 
     local func, err = loadstring(command)
     if not func then
-        warn("[WebSocket] Invalid command:", err)
+        warn("[Error] Bad command:", err)
         return
     end
 
-    lastTeleport = os_time()
     isTeleporting = true
-    print("[Teleport] Executing command")
+    lastTeleport = now
+    print("[Teleport] Executing...")
     func()
 end)
 
--- Reconnect on close
+-- On disconnect
 socket.OnClose:Connect(function()
     warn("[WebSocket] Connection closed.")
 end)
