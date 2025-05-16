@@ -1,54 +1,69 @@
 -- CONFIGURATION
-local WS_URL        = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
+local NGROK_URL = "https://8216-2a00-23c7-148c-9801-7086-a3ca-6a40-463e.ngrok-free.app"
+local POLL_ENDPOINT = NGROK_URL .. "/next"
 local COOLDOWN_TIME = 8 * 60  -- 8 minutes
 
 -- SERVICES
-local TeleportService   = game:GetService("TeleportService")
-local WebSocketService  = game:GetService("WebSocketService")
-local Players           = game:GetService("Players")
-local localPlayer       = Players.LocalPlayer
-
--- STATE
+local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
 local lastTeleport = 0
+local isTeleporting = false
 
--- Safe teleport helper
-local function safeTeleport(jobId)
-    local now = os.time()
-    if now - lastTeleport < COOLDOWN_TIME then
-        warn(("[Cooldown] %d seconds remaining"):format(COOLDOWN_TIME - (now - lastTeleport)))
-        return
-    end
-    lastTeleport = now
-    TeleportService:TeleportToPlaceInstance(PLACE_ID, jobId)
-end
-
--- Connect
-local success, ws = pcall(function()
-    return WebSocketService:ConnectAsync(WS_URL)
-end)
-if not success or not ws then
-    warn("[WebSocket] Connection failed:", ws)
+-- EXECUTOR HTTP FUNCTION
+local request = http and http.request or syn and syn.request or request
+if not request then
+    warn("This executor does not support http.request or syn.request.")
     return
 end
-print("[WebSocket] Connected to server")
 
--- Handle incoming messages
-ws.OnMessage:Connect(function(message)
-    -- if it's just a raw JobID
-    local jobId = message:match("([a-f0-9%-]+)")
-    if jobId then
-        safeTeleport(jobId)
-    else
-        -- otherwise treat it as runnable Lua
-        local fn, err = loadstring(message)
-        if fn then
-            fn()
-        else
-            warn("[WebSocket] Bad script:", err)
-        end
+-- Teleport failure reset
+TeleportService.TeleportInitFailed:Connect(function(player, result, message)
+    if player == localPlayer and result == Enum.TeleportResult.GameFull then
+        warn("[Teleport] Failed — Game Full")
+        lastTeleport = 0
+        isTeleporting = false
     end
 end)
 
-ws.OnClose:Connect(function(code, reason)
-    warn(("[WebSocket] Disconnected (%d): %s"):format(code, reason or ""))
-end)
+print("[Ronix Executor] Starting HTTP polling loop...")
+
+-- Poll loop
+while true do
+    local now = os.time()
+
+    if now - lastTeleport >= COOLDOWN_TIME then
+        local response = request({
+            Url = POLL_ENDPOINT,
+            Method = "GET"
+        })
+
+        if response and response.StatusCode == 200 then
+            local data = HttpService:JSONDecode(response.Body)
+            local command = data.command
+
+            if command and command:find("TeleportService") then
+                print("[Poll] Received command:", command)
+
+                local func, err = loadstring(command)
+                if func then
+                    print("[Poll] Executing teleport...")
+                    lastTeleport = now
+                    isTeleporting = true
+                    func()
+                else
+                    warn("[Poll] Failed to compile command:", err)
+                end
+            else
+                print("[Poll] No valid teleport command.")
+            end
+        else
+            warn("[Poll] HTTP failure:", response and response.StatusCode)
+        end
+    else
+        print("[Cooldown] Active. Skipping poll.")
+    end
+
+    task.wait(5)
+end
