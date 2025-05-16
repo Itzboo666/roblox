@@ -25,9 +25,9 @@ if not ok or not socket then warn("WebSocket connection failed.") return end
 print("[WebSocket] Connected.")
 
 -- Handlers
-TeleportService.TeleportCompleted:Connect(function()
+TeleportService.TeleportSucceeded:Connect(function(playerFrom, placeId, jobId)
     isTeleporting = false
-    print("[Teleport] Completed.")
+    print("[Teleport] Success to JobID:", jobId)
 end)
 
 TeleportService.TeleportInitFailed:Connect(function(_, result)
