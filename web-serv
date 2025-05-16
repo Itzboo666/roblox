@@ -2,73 +2,67 @@
 local WS_URL       = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
 local COOLDOWN_SEC = 8 * 60  -- 8 minutes
 
--- SERVICES
+--- SERVICES
 local TeleportService = game:GetService("TeleportService")
 local Players         = game:GetService("Players")
-local localPlayer     = Players.LocalPlayer
+local LocalPlayer     = Players.LocalPlayer
 local os_time         = os.time
 
 -- STATE
-local cooldownUntil = 0
-local onCooldown    = false
+local lastTeleport = 0
+local isTeleporting = false
 
--- Pick a connect function supported by Ronix
-local connect
-if WebSocket and type(WebSocket.connect) == "function" then
-    connect = WebSocket.connect
-elseif WebSocketService and type(WebSocketService.ConnectAsync) == "function" then
-    connect = function(url) return WebSocketService:ConnectAsync(url) end
-else
-    error("No WebSocket API available in this executor")
+-- WebSocket connect (Ronix-compatible)
+local connect = WebSocket and WebSocket.connect or (WebSocketService and WebSocketService.ConnectAsync)
+if not connect then
+    error("This executor doesn't support WebSocket connections.")
 end
 
--- Establish WebSocket
-local ok, socket = pcall(connect, WS_URL)
+local ok, socket = pcall(function()
+    return connect(WS_URL)
+end)
+
 if not ok or not socket then
-    error("[WebSocket] Connection failed: " .. tostring(socket))
+    error("WebSocket failed to connect: " .. tostring(socket))
 end
-print("[WebSocket] Connected to server")
 
--- Reset cooldown on success or fullness
-TeleportService.TeleportSucceeded:Connect(function()
-    onCooldown = false
-    print("[Teleport] Success — ready for next")
-end)
+print("[WebSocket] Connected")
+
+-- Handle GameFull error to cancel cooldown
 TeleportService.TeleportInitFailed:Connect(function(player, result)
-    if player == localPlayer and result == Enum.TeleportResult.GameFull then
-        onCooldown = false
-        cooldownUntil = 0
-        print("[Teleport] Server full — ready for next")
+    if player == LocalPlayer and result == Enum.TeleportResult.GameFull then
+        warn("[Teleport] Server full — cooldown reset")
+        isTeleporting = false
+        lastTeleport = 0
     end
 end)
 
--- Handle incoming commands
-socket.OnMessage:Connect(function(msg)
+-- Message handler
+socket.OnMessage:Connect(function(command)
     local now = os_time()
-    if now < cooldownUntil or onCooldown then
-        print("[Cooldown] Skipping—", math.max(0, cooldownUntil - now), "s left")
+
+    if isTeleporting or (now - lastTeleport) < COOLDOWN_TIME then
+        local remaining = COOLDOWN_TIME - (now - lastTeleport)
+        print("[Cooldown] Ignored —", math.max(remaining, 0), "seconds left")
         return
     end
 
-    local fn, err = loadstring(msg)
+    local fn, err = loadstring(command)
     if not fn then
-        warn("[WebSocket] Invalid command:", err)
+        warn("[WebSocket] Invalid Lua:", err)
         return
     end
 
-    -- Execute teleport
-    print("[Teleport] Executing command")
+    -- Run teleport
+    print("[Teleport] Executing...")
     fn()
-
-    -- Engage cooldown
-    onCooldown    = true
-    cooldownUntil = now + COOLDOWN_SEC
-    print("[Cooldown] Engaged for", COOLDOWN_SEC, "seconds")
+    isTeleporting = true
+    lastTeleport = now
+    print("[Cooldown] Engaged for", COOLDOWN_TIME, "seconds")
 end)
 
--- Optional: log disconnects
 if socket.OnClose then
-    socket.OnClose:Connect(function(code, reason)
-        warn("[WebSocket] Disconnected:", code, reason)
+    socket.OnClose:Connect(function()
+        warn("[WebSocket] Connection closed.")
     end)
 end
