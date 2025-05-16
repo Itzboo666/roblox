@@ -1,5 +1,5 @@
 -- CONFIGURATION
-local WS_URL        = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
+local WS_URL        = "wss:/e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
 local COOLDOWN_TIME = 8 * 60  -- 8 minutes
 
 -- SERVICES
