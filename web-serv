@@ -1,80 +1,82 @@
 -- CONFIG
-local WS_URL = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
-local COOLDOWN_TIME = 8 * 60  -- 8 minutes
+local WS_URL       = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
+local CONFIRM_URL  = "https://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/confirm"
+local COOLDOWN_TIME = 8 * 60
 
 -- SERVICES
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 local localPlayer = Players.LocalPlayer
+local request = http and http.request or syn and syn.request
+if not request then warn("No supported HTTP library found.") return end
 
 -- STATE
 local os_time = os.time
-local blockNewTeleportsUntil = 0
+local blockUntil = 0
 local isTeleporting = false
 
--- Executor support check
-local socket
+-- Connect WebSocket
 local connectFn = (WebSocket and WebSocket.connect) or (WebSocketService and WebSocketService.ConnectAsync)
-if not connectFn then
-    warn("[WebSocket] This executor doesn't support WebSocket.")
-    return
-end
+if not connectFn then warn("WebSocket not supported.") return end
 
--- Connect
-local success, result = pcall(function()
-    return connectFn(WS_URL)
-end)
-if not success or not result then
-    warn("[WebSocket] Failed to connect:", result)
-    return
-end
+local ok, socket = pcall(function() return connectFn(WS_URL) end)
+if not ok or not socket then warn("WebSocket connection failed.") return end
+print("[WebSocket] Connected.")
 
-socket = result
-print("[WebSocket] Connected!")
-
--- Cooldown reset on teleport complete
+-- Handlers
 TeleportService.TeleportCompleted:Connect(function()
     isTeleporting = false
-    print("[Teleport] Success, cooldown still active.")
+    print("[Teleport] Completed.")
 end)
 
--- If teleport fails (e.g. GameFull), just wait out cooldown
-TeleportService.TeleportInitFailed:Connect(function(player, result, message)
-    if player == localPlayer then
-        warn("[Teleport Failed]", result, message)
+TeleportService.TeleportInitFailed:Connect(function(_, result)
+    if result == Enum.TeleportResult.GameFull then
         isTeleporting = false
-        -- Do NOT reset cooldown timer
+        print("[Teleport] Failed (GameFull) — will wait for new job.")
     end
 end)
 
--- Command handler
-socket.OnMessage:Connect(function(command)
+-- Validate job ID with server
+local function confirmJobId(jobId)
+    local resp = request({
+        Url = CONFIRM_URL,
+        Method = "POST",
+        Headers = { ["Content-Type"] = "application/json" },
+        Body = HttpService:JSONEncode({ job_id = jobId })
+    })
+    return resp and resp.StatusCode == 200
+end
+
+-- On WebSocket Message
+socket.OnMessage:Connect(function(cmd)
+    if isTeleporting then return end
     local now = os_time()
+    if now < blockUntil then return end
 
-    if now < blockNewTeleportsUntil then
-        warn(("[Cooldown] Ignored. %d seconds left."):format(blockNewTeleportsUntil - now))
+    local jobId = string.match(cmd, '"([a-f0-9%-]+)"')
+    if not jobId then
+        warn("No JobID found in command")
         return
     end
 
-    if isTeleporting then
-        warn("[Status] Already teleporting, skipping")
-        return
-    end
-
-    local func, err = loadstring(command)
+    local func, err = loadstring(cmd)
     if not func then
-        warn("[Error] Invalid command:", err)
+        warn("Invalid teleport command:", err)
         return
     end
 
-    -- Lock and set cooldown
-    isTeleporting = true
-    blockNewTeleportsUntil = now + COOLDOWN_TIME
-    print("[Teleport] Executing:", command)
-    func()
+    -- Confirm with server
+    if confirmJobId(jobId) then
+        print("[Teleport] Confirmed. Executing:", jobId)
+        blockUntil = now + COOLDOWN_TIME
+        isTeleporting = true
+        func()
+    else
+        warn("[Teleport] JobID mismatch. Skipping.")
+    end
 end)
 
--- On close
 if socket.OnClose then
     socket.OnClose:Connect(function()
         warn("[WebSocket] Disconnected.")
