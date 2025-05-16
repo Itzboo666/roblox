@@ -1,78 +1,71 @@
--- AUTO‑EXEC TELEPORT SCRIPT (Ronix‑Compatible)
-
--- CONFIG: point at your ngrok WebSocket
-local WS_URL       = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
-local COOLDOWN_SEC = 8 * 60  -- seconds
+-- CONFIGURATION
+local WS_URL        = "wss://0cd7-2a00-23c7-148c-9801-64cc-e008-6004-e474.ngrok-free.app/ws"
+local COOLDOWN_TIME = 8 * 60  -- 8 minutes
 
 -- SERVICES
-local Players         = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
-local os_time         = os.time
+local WebSocketService   = game:GetService("WebSocketService")
+local TeleportService    = game:GetService("TeleportService")
+local Players            = game:GetService("Players")
+local localPlayer        = Players.LocalPlayer
+local os_time            = os.time
+local task_wait          = task.wait
 
 -- STATE
 local lastTeleport = 0
-local inCooldown   = false
+local isTeleporting = false
 
--- HELPER: safe Teleport
-local function doTeleport(jobId)
-    local ok, err = pcall(function()
-        TeleportService:TeleportToPlaceInstance(tonumber(PLACE_ID), jobId)
-    end)
-    if not ok then
-        warn("[Teleport] pcall failed:", err)
-        return false
-    end
-    return true
+-- CONNECT
+local success, socket = pcall(function()
+    return WebSocketService:ConnectAsync(WS_URL)
+end)
+if not success or not socket then
+    warn("[WebSocket] Connection failed:", socket)
+    return
 end
+print("[WebSocket] Connected to server")
 
--- HANDLE "SERVER FULL" to reset cooldown
-TeleportService.TeleportInitFailed:Connect(function(player, result)
-    if player == Players.LocalPlayer and result == Enum.TeleportResult.GameFull then
-        warn("[Teleport] Server full, resetting")
-        lastTeleport = 0
-        inCooldown   = false
+-- RESET on completion
+TeleportService.TeleportCompleted:Connect(function()
+    isTeleporting = false
+    print("[Teleport] Completed, flag reset")
+end)
+
+-- ALSO reset on failure (GameFull)
+TeleportService.TeleportInitFailed:Connect(function(player, result, message)
+    if player == localPlayer and result == Enum.TeleportResult.GameFull then
+        print("[Teleport] GameFull, flag reset")
+        isTeleporting = false
     end
 end)
 
--- SETUP WEBSOCKET
-local wsConn
-do
-    -- Ronix exposes WebSocket.connect
-    assert(WebSocket and type(WebSocket.connect) == "function", "WebSocket.connect missing")
-    local ok, sock = pcall(WebSocket.connect, WS_URL)
-    assert(ok and sock, "[WebSocket] connect error: " .. tostring(sock))
-    wsConn = sock
-    print("[WebSocket] Connected to", WS_URL)
-end
+-- MESSAGE HANDLER
+socket.OnMessage:Connect(function(message)
+    -- prevent overlap
+    if isTeleporting then
+        warn("[Lock] Currently teleporting, skipping message")
+        return
+    end
 
--- ON MESSAGE: raw JobID or Lua snippet
-wsConn.OnMessage:Connect(function(msg)
     local now = os_time()
-    if inCooldown or now - lastTeleport < COOLDOWN_SEC then
-        local rem = COOLDOWN_SEC - (now - lastTeleport)
-        warn("[Cooldown] skipping, time left:", rem)
+    if now - lastTeleport < COOLDOWN_TIME then
+        warn(("[Cooldown] %d seconds remaining"):format(COOLDOWN_TIME - (now - lastTeleport)))
         return
     end
 
-    -- Try to extract JobID
-    local jobId = msg:match("([0-9a-f%-]+)")
-    if not jobId then
-        warn("[WebSocket] no jobId in:", msg)
+    -- Now we can grab the command
+    local func, err = loadstring(message)
+    if not func then
+        warn("[WebSocket] Invalid command:", err)
         return
     end
 
-    print("[Teleport] Attempting JobID:", jobId)
-    local success = doTeleport(jobId)
-    if success then
-        lastTeleport = now
-        inCooldown   = true
-        print("[Cooldown] engaged for", COOLDOWN_SEC, "sec")
-    end
+    -- **Lock and teleport**
+    isTeleporting = true
+    lastTeleport   = now
+    print("[Teleport] Executing command:", message)
+    func()
 end)
 
--- OPTIONAL: log disconnect
-if wsConn.OnClose then
-    wsConn.OnClose:Connect(function(code, reason)
-        warn("[WebSocket] closed:", code, reason)
-    end)
-end
+socket.OnClose:Connect(function(code, reason)
+    warn(("[WebSocket] Connection closed (%d): %s"):format(code, tostring(reason)))
+end)
