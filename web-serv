@@ -1,74 +1,71 @@
--- CONFIGURATION
-local WS_URL = "wss:///e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"
-local PLACE_ID = 85896571713843
-local COOLDOWN_TIME = 8 * 60  -- 8 minutes
+-- CONFIG
+local WS_URL        = "wss://e600-2a00-23c7-148c-9801-7438-a7df-f885-bf66.ngrok-free.app/ws"  -- update this!
+local COOLDOWN_SEC  = 8 * 60  -- 8 minutes
 
 -- SERVICES
-local TeleportService = game:GetService("TeleportService")
-local Players = game:GetService("Players")
-local localPlayer = Players.LocalPlayer
+local TeleportService   = game:GetService("TeleportService")
+local Players           = game:GetService("Players")
+local localPlayer       = Players.LocalPlayer
+local os_time           = os.time
+local task_wait         = task.wait
 
-local os_time = os.time
-local lastTeleport = 0
-local isTeleporting = false
+-- STATE
+local blockUntil = 0
+local onCooldown = false
 
--- Executor Compatibility
-local wsSupport = WebSocketService or (WebSocket and WebSocket.connect)
-if not wsSupport then
-    warn("WebSocket not supported in this executor.")
-    return
+-- Attempt to find a WebSocket connect function
+local connect
+if WebSocket and type(WebSocket.connect) == "function" then
+    connect = WebSocket.connect
+elseif WebSocketService and type(WebSocketService.ConnectAsync) == "function" then
+    connect = function(url) return WebSocketService:ConnectAsync(url) end
+else
+    error("No supported WebSocket API (WebSocket.connect or WebSocketService:ConnectAsync)")
 end
 
--- Connect to WebSocket
-local socket
-local success, err = pcall(function()
-    socket = (WebSocketService and WebSocketService:ConnectAsync(WS_URL)) or WebSocket.connect(WS_URL)
-end)
-
-if not success or not socket then
-    warn("[WebSocket] Connection failed:", err)
-    return
+-- Connect once
+local ok, ws = pcall(connect, WS_URL)
+if not ok or not ws then
+    error("[WebSocket] Connection failed: "..tostring(ws))
 end
-
 print("[WebSocket] Connected to server")
 
--- Handle teleport errors (e.g., experience full)
-TeleportService.TeleportInitFailed:Connect(function(player, result, message)
-    if player == localPlayer then
-        warn("[Teleport Failed]", result, message)
-        if result == Enum.TeleportResult.GameFull then
-            lastTeleport = 0  -- cancel cooldown
-            isTeleporting = false
-        end
+-- Reset cooldown on success or failure
+TeleportService.TeleportSucceeded:Connect(function()
+    onCooldown = false
+    print("[Teleport] Completed — ready for next")
+end)
+TeleportService.TeleportInitFailed:Connect(function(player, result)
+    if player == localPlayer and result == Enum.TeleportResult.GameFull then
+        onCooldown = false
+        print("[Teleport] Full server — ready for next")
     end
 end)
 
--- Listen for commands
-socket.OnMessage:Connect(function(command)
-    print("[WebSocket] Received:", command)
-    if isTeleporting then
-        warn("[Cooldown] Ignoring due to active cooldown.")
+-- Handle incoming commands
+ws.OnMessage:Connect(function(msg)
+    local now = os_time()
+    if onCooldown or now < blockUntil then
+        print("[Cooldown] skipping")
         return
     end
 
-    if os_time() - lastTeleport < COOLDOWN_TIME then
-        warn("[Cooldown] Still active. Skipping.")
+    -- Expecting msg = 'game:GetService("TeleportService"):TeleportToPlaceInstance(...)'
+    local fn, err = loadstring(msg)
+    if not fn then
+        warn("[WebSocket] Invalid script:", err)
         return
     end
 
-    local func, err = loadstring(command)
-    if not func then
-        warn("[WebSocket] Invalid command:", err)
-        return
-    end
-
-    lastTeleport = os_time()
-    isTeleporting = true
-    print("[Teleport] Executing command")
-    func()
+    -- Trigger teleport + cooldown
+    print("[Teleport] Executing")
+    fn()
+    onCooldown    = true
+    blockUntil    = now + COOLDOWN_SEC
 end)
 
--- Reconnect on close
-socket.OnClose:Connect(function()
-    warn("[WebSocket] Connection closed.")
-end)
+if ws.OnClose then
+    ws.OnClose:Connect(function()
+        warn("[WebSocket] Disconnected; restart script to reconnect")
+    end)
+end
