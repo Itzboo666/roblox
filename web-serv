@@ -1,7 +1,7 @@
 -- UNIVERSAL TELEPORT CLIENT (NO TeleportCompleted REQUIRED)
 -- Works on Synapse, RōbloxX, all executors
 
-local WS_URL = "wss://https://8260-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
+local WS_URL = "wss://8260-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
 local COOLDOWN_FILE = "teleport_cooldown.txt"
 local COOLDOWN = 8 * 60 -- 8 minutes in seconds
 local TIMEOUT = 15 -- Seconds to wait for success confirmation
