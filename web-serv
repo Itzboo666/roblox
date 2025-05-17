@@ -1,7 +1,7 @@
 -- AUTO‑EXEC TELEPORT CLIENT
 
 -- CONFIGURATION: your ngrok tunnel WS URL
-local WS_URL        = "wss://34d5-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
+local WS_URL        = "wss://8260-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
 local COOLDOWN_SEC  = 8 * 60  -- 8 minutes
 
 -- SERVICES
