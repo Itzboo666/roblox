@@ -1,86 +1,87 @@
--- CONFIGURATION
-local WS_URL = "wss://34d5-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
-local COOLDOWN_TIME = 8 * 60  -- 8 minutes
+-- AUTO‑EXEC TELEPORT CLIENT
+
+-- CONFIGURATION: your ngrok tunnel WS URL
+local WS_URL        = "wss://34d5-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
+local COOLDOWN_SEC  = 8 * 60  -- 8 minutes
 
 -- SERVICES
-local Players = game:GetService("Players")
+local Players         = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
-local localPlayer = Players.LocalPlayer
-local os_time = os.time
-local task_wait = task.wait
+local os_time         = os.time
 
 -- STATE
 local lastTeleport = 0
-local isTeleporting = false
+local busy         = false
 
--- EXECUTOR COMPATIBILITY
-local wsSupport = WebSocketService or (WebSocket and WebSocket.connect)
-if not wsSupport then
-    warn("[WebSocket] Not supported by executor.")
+-- EXECUTOR WS SUPPORT
+local connect
+if WebSocket and type(WebSocket.connect) == "function" then
+    connect = WebSocket.connect
+elseif WebSocketService and type(WebSocketService.ConnectAsync) == "function" then
+    connect = function(url) return WebSocketService:ConnectAsync(url) end
+else
+    warn("[WebSocket] No supported API (WebSocket.connect or WSService:ConnectAsync).")
     return
 end
 
--- WEBSOCKET CONNECTION
-local socket
-local ok, result = pcall(function()
-    return (WebSocketService and WebSocketService:ConnectAsync(WS_URL)) or WebSocket.connect(WS_URL)
-end)
-
-if not ok or not result then
-    warn("[WebSocket] Connection failed:", result)
+-- CONNECT
+local ok, socket = pcall(connect, WS_URL)
+if not ok or not socket then
+    warn("[WebSocket] Connection failed:", socket)
     return
 end
+print("[WebSocket] Connected to:", WS_URL)
 
-socket = result
-print("[WebSocket] Connected to", WS_URL)
-
--- TELEPORT FAIL HANDLER
+-- RESET on GameFull
 TeleportService.TeleportInitFailed:Connect(function(player, result)
-    if player == localPlayer and result == Enum.TeleportResult.GameFull then
-        warn("[Teleport] Game full — cooldown cleared")
+    if player == Players.LocalPlayer and result == Enum.TeleportResult.GameFull then
+        warn("[Teleport] Server full — clearing busy flag and cooldown")
+        busy = false
         lastTeleport = 0
-        isTeleporting = false
     end
 end)
 
--- TELEPORT SUCCESS HANDLER
-if TeleportService.TeleportCompleted then
-    TeleportService.TeleportCompleted:Connect(function()
-        isTeleporting = false
-        print("[Teleport] Completed successfully")
-    end)
-end
+-- OPTIONAL: forcibly clear busy after 30s in case no TeleportCompleted event
+spawn(function()
+    while true do
+        task.wait(30)
+        if busy and os_time() - lastTeleport > COOLDOWN_SEC then
+            print("[Watchdog] Clearing busy flag after timeout")
+            busy = false
+        end
+    end
+end)
 
--- MESSAGE HANDLER
-socket.OnMessage:Connect(function(message)
+-- ON MESSAGE
+socket.OnMessage:Connect(function(msg)
+    print("[WebSocket] Received message:", msg)
     local now = os_time()
 
-    if isTeleporting then
-        warn("[Cooldown] Already teleporting, skip")
+    if busy then
+        warn("[Cooldown] Busy flag set, skipping")
+        return
+    end
+    if now - lastTeleport < COOLDOWN_SEC then
+        warn(("[Cooldown] %d seconds remaining"):format(COOLDOWN_SEC - (now - lastTeleport)))
         return
     end
 
-    if now - lastTeleport < COOLDOWN_TIME then
-        local remaining = COOLDOWN_TIME - (now - lastTeleport)
-        warn("[Cooldown] Remaining:", remaining, "sec")
+    -- compile & execute
+    local fn, err = loadstring(msg)
+    if not fn then
+        warn("[WebSocket] loadstring error:", err)
         return
     end
 
-    local func, err = loadstring(message)
-    if not func then
-        warn("[WebSocket] Invalid Lua code:", err)
-        return
-    end
-
-    print("[Teleport] Running command:", message)
+    print("[Teleport] Executing:", msg)
+    busy = true
     lastTeleport = now
-    isTeleporting = true
-    func()
+    fn()
 end)
 
 -- ON CLOSE
 if socket.OnClose then
     socket.OnClose:Connect(function(code, reason)
-        warn(("[WebSocket] Disconnected (%s): %s"):format(code, tostring(reason)))
+        warn(("[WebSocket] Disconnected (%s): %s"):format(tostring(code), tostring(reason)))
     end)
 end
