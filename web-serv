@@ -8,6 +8,7 @@ local COOLDOWN_SEC  = 8 * 60  -- 8 minutes
 local Players         = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local os_time         = os.time
+local task_wait       = task.wait
 
 -- STATE
 local lastTeleport = 0
@@ -41,12 +42,12 @@ TeleportService.TeleportInitFailed:Connect(function(player, result)
     end
 end)
 
--- OPTIONAL: forcibly clear busy after 30s in case no TeleportCompleted event
+-- OPTIONAL: watchdog to reset if script is stuck
 spawn(function()
     while true do
-        task.wait(30)
-        if busy and os_time() - lastTeleport > COOLDOWN_SEC then
-            print("[Watchdog] Clearing busy flag after timeout")
+        task_wait(10)
+        if busy and os_time() - lastTeleport > (COOLDOWN_SEC + 30) then
+            warn("[Watchdog] Timeout passed — force clearing cooldown")
             busy = false
         end
     end
@@ -54,29 +55,30 @@ end)
 
 -- ON MESSAGE
 socket.OnMessage:Connect(function(msg)
-    print("[WebSocket] Received message:", msg)
+    print("[WebSocket] Received:", msg)
     local now = os_time()
 
     if busy then
-        warn("[Cooldown] Busy flag set, skipping")
-        return
-    end
-    if now - lastTeleport < COOLDOWN_SEC then
-        warn(("[Cooldown] %d seconds remaining"):format(COOLDOWN_SEC - (now - lastTeleport)))
+        warn("[Cooldown] Busy flag set — skipping")
         return
     end
 
-    -- compile & execute
+    if now - lastTeleport < COOLDOWN_SEC then
+        local remaining = COOLDOWN_SEC - (now - lastTeleport)
+        warn(("[Cooldown] Still %d seconds left — skipping"):format(remaining))
+        return
+    end
+
     local fn, err = loadstring(msg)
     if not fn then
-        warn("[WebSocket] loadstring error:", err)
+        warn("[loadstring error]:", err)
         return
     end
 
-    print("[Teleport] Executing:", msg)
+    print("[Teleport] Executing command")
     busy = true
     lastTeleport = now
-    fn()
+    pcall(fn)
 end)
 
 -- ON CLOSE
