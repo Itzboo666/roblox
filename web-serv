@@ -1,153 +1,93 @@
--- AUTO-EXEC TELEPORT CLIENT (FINAL OPTIMIZED VERSION)
+-- TELEPORT CLIENT WITH VISIBLE COOLDOWN TRACKER
+-- Save as "TeleportClient.lua" in your autoexec folder
 
--- CONFIGURATION
+-- CONFIG
 local WS_URL = "wss://8260-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
-local SUCCESS_COOLDOWN = 8 * 60  -- 8 minutes for successful teleports
-local FAILURE_RETRY = 15         -- 15 seconds for failed attempts
+local COOLDOWN_FILE = "teleport_cooldown.txt"  -- Saved in executor's workspace
+local COOLDOWN_MINS = 8  -- 8 minute cooldown
 
 -- SERVICES
-local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local os_time = os.time
 local task_wait = task.wait
 
 -- STATE
-local lastSuccess = 0           -- Only updated on successful teleports
-local currentJobId = nil
-local cooldownEnd = 0
-local failureCooldown = 0        -- Separate timer for failures
-local isTeleporting = false
+local cooldown_end = 0
+local is_teleporting = false
 
--- UNIVERSAL WEBSOCKET CONNECTION
-local socket
-if WebSocket and type(WebSocket.connect) == "function" then
-    socket = WebSocket.connect(WS_URL)
-elseif syn and syn.websocket then
-    socket = syn.websocket.connect(WS_URL)
-else
-    warn("No supported WebSocket library found")
-    return
-end
-
--- TELEPORT FAILURE HANDLER (WORKS ON ALL EXECUTORS)
-TeleportService.TeleportInitFailed:Connect(function(_, result)
-    isTeleporting = false
-    currentJobId = nil
-    
-    if result == Enum.TeleportResult.GameFull then
-        failureCooldown = os_time() + FAILURE_RETRY
-        warn("[Failure] Server full - retry in "..FAILURE_RETRY.."s")
-    else
-        failureCooldown = os_time() + 5  -- Short cooldown for other errors
-        warn("[Failure] Teleport error: "..tostring(result))
-    end
-    printStatus()
-end)
-
--- STATUS MONITOR
-local function printStatus()
-    local now = os_time()
-    
-    if now < failureCooldown then
-        local remaining = failureCooldown - now
-        print(("🛑 Retry available in %d:%02d (failed attempt)"):format(
-            math.floor(remaining/60), remaining%60))
-    elseif now < cooldownEnd then
-        local remaining = cooldownEnd - now
-        print(("⏳ Cooldown ends in %d:%02d (last success)"):format(
-            math.floor(remaining/60), remaining%60))
-    else
-        print("✅ Ready for new teleports")
+-- FILE OPERATIONS (Works in all major executors)
+local function save_cooldown()
+    if writefile then
+        local remaining = math.max(0, cooldown_end - os_time())
+        writefile(COOLDOWN_FILE, ("%d"):format(remaining))
     end
 end
 
--- AUTOMATIC STATUS UPDATES
-spawn(function()
-    while true do
-        task_wait(30)
-        printStatus()
-        
-        -- Emergency reset if stuck
-        if isTeleporting and (os_time() - lastSuccess) > (SUCCESS_COOLDOWN + 60) then
-            warn("🆘 Force resetting stuck teleport state")
-            isTeleporting = false
-            currentJobId = nil
+local function load_cooldown()
+    if readfile and isfile and isfile(COOLDOWN_FILE) then
+        return os_time() + tonumber(readfile(COOLDOWN_FILE))
+    end
+    return 0
+end
+
+-- COOLDOWN DISPLAY
+local function update_display()
+    local remaining = cooldown_end - os_time()
+    
+    if remaining > 0 then
+        local mins = math.floor(remaining / 60)
+        local secs = math.floor(remaining % 60)
+        print(("⏳ COOLDOWN: %d:%02d"):format(mins, secs))
+        save_cooldown()  -- Update the file
+    else
+        print("✅ READY FOR NEW JOBS")
+        if isfile and isfile(COOLDOWN_FILE) then
+            delfile(COOLDOWN_FILE)  -- Clear when done
         end
     end
-end)
-
--- WEBSOCKET MESSAGE HANDLER
-socket.OnMessage:Connect(function(msg)
-    local now = os_time()
-    
-    -- Validate message format
-    if type(msg) ~= "string" or #msg < 10 then
-        warn("⚠️ Invalid message format")
-        return
-    end
-
-    -- Check failure cooldown
-    if now < failureCooldown then
-        local remaining = failureCooldown - now
-        warn(("⏸️ Skipping - recent failure (wait %ds)"):format(remaining))
-        return
-    end
-
-    -- Check success cooldown
-    if now < cooldownEnd then
-        local remaining = cooldownEnd - now
-        warn(("⏸️ Skipping - cooldown active (%d:%02d left)"):format(
-            math.floor(remaining/60), remaining%60))
-        return
-    end
-
-    -- Check duplicate job
-    if currentJobId == msg then
-        warn("⏸️ Skipping - already processing this job")
-        return
-    end
-
-    -- Compile command
-    local fn, err = loadstring(msg)
-    if not fn then
-        warn("⚠️ Load error: "..tostring(err))
-        return
-    end
-
-    -- Start teleport
-    print("🚀 Attempting teleport...")
-    isTeleporting = true
-    currentJobId = msg
-    
-    local success, err = pcall(fn)
-    if not success then
-        warn("⚠️ Execution error: "..tostring(err))
-        isTeleporting = false
-        currentJobId = nil
-        failureCooldown = os_time() + 5
-    else
-        -- Success detection fallback
-        spawn(function()
-            task_wait(5)  -- Wait for teleport to complete
-            
-            if isTeleporting and currentJobId == msg then
-                print("✨ Teleport success (assuming)")
-                lastSuccess = os_time()
-                cooldownEnd = lastSuccess + SUCCESS_COOLDOWN
-                isTeleporting = false
-                currentJobId = nil
-                printStatus()
-            end
-        end)
-    end
-end)
-
--- WEBSOCKET ERROR HANDLING
-if socket.OnClose then
-    socket.OnClose:Connect(function()
-        warn("🔌 WebSocket disconnected - reload script to reconnect")
-    end)
 end
 
-print("⚡ Teleport client initialized!")
-printStatus()
+-- WEBSOCKET CONNECTION (Universal)
+local socket = (syn and syn.websocket or WebSocket).connect(WS_URL)
+
+-- TELEPORT HANDLER
+socket.OnMessage:Connect(function(command)
+    -- Check if valid teleport command
+    if not command:find("TeleportToPlaceInstance") then
+        warn("INVALID COMMAND")
+        return
+    end
+    
+    -- Enforce cooldown
+    if os_time() < cooldown_end then
+        update_display()
+        return
+    end
+    
+    -- Execute teleport
+    is_teleporting = true
+    local fn = assert(loadstring(command))
+    
+    if pcall(fn) then
+        -- Success - start cooldown
+        cooldown_end = os_time() + (COOLDOWN_MINS * 60)
+        save_cooldown()
+        print("🚀 TELEPORT SUCCESS - COOLDOWN STARTED")
+    else
+        warn("⚠️ TELEPORT FAILED")
+    end
+    
+    is_teleporting = false
+    update_display()
+end)
+
+-- AUTOMATIC UPDATER
+spawn(function()
+    cooldown_end = load_cooldown()  -- Load existing cooldown
+    while true do
+        update_display()
+        task_wait(30)  -- Update every 30 seconds
+    end
+end)
+
+print("Teleport Client Active!")
