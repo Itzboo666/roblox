@@ -1,18 +1,18 @@
--- REVISED TELEPORT CLIENT (FAIL-SAFE COOLDOWN)
-local WS_URL = "wss://8260-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
-local COOLDOWN_FILE = "teleport_cooldown.txt"
-local COOLDOWN_MINS = 8
+-- UNIVERSAL TELEPORT CLIENT (NO TeleportCompleted REQUIRED)
+-- Works on Synapse, RōbloxX, all executors
 
--- SERVICES
+local WS_URL = "wss://https://8260-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
+local COOLDOWN_FILE = "teleport_cooldown.txt"
+local COOLDOWN = 8 * 60 -- 8 minutes in seconds
+local TIMEOUT = 15 -- Seconds to wait for success confirmation
+
 local TeleportService = game:GetService("TeleportService")
 local os_time = os.time
-local task_wait = task.wait
-
--- STATE
 local cooldown_end = 0
 local active_job = nil
+local last_attempt = 0
 
--- FILE OPERATIONS
+-- PERSISTENT STORAGE
 local function save_cooldown()
     if writefile then
         writefile(COOLDOWN_FILE, tostring(cooldown_end))
@@ -21,49 +21,75 @@ end
 
 local function load_cooldown()
     if readfile and isfile(COOLDOWN_FILE) then
-        return tonumber(readfile(COOLDOWN_FILE))
+        return tonumber(readfile(COOLDOWN_FILE)) or 0
     end
     return 0
 end
 
--- COOLDOWN HANDLERS
-TeleportService.TeleportCompleted:Connect(function()
+-- FAILURE HANDLER (WORKS EVERYWHERE)
+TeleportService.TeleportInitFailed:Connect(function(_, result)
     if active_job then
-        cooldown_end = os_time() + (COOLDOWN_MINS * 60)
-        save_cooldown()
-        print("✅ COOLDOWN STARTED")
+        print("❌ FAILED:", result)
         active_job = nil
+        if writefile and isfile(COOLDOWN_FILE) then
+            delfile(COOLDOWN_FILE)
+        end
     end
 end)
 
-TeleportService.TeleportInitFailed:Connect(function(_, result)
-    warn("⚠️ FAILED: "..tostring(result))
-    active_job = nil
-    if writefile and isfile(COOLDOWN_FILE) then
-        delfile(COOLDOWN_FILE)
+-- SUCCESS DETECTION (FALLBACK METHOD)
+local function check_success()
+    wait(TIMEOUT)
+    if active_job then
+        print("✅ ASSUMING SUCCESS - Starting cooldown")
+        cooldown_end = os_time() + COOLDOWN
+        save_cooldown()
+        active_job = nil
     end
-end)
+end
 
 -- WEBSOCKET HANDLER
 local socket = (syn and syn.websocket or WebSocket).connect(WS_URL)
 socket.OnMessage:Connect(function(job_id)
-    if os_time() < cooldown_end then
-        local remaining = math.floor((cooldown_end - os_time())/60)
-        print(("⏸️ Skipping - %d minute cooldown"):format(remaining))
+    local now = os_time()
+    
+    -- Cooldown check
+    if now < cooldown_end then
+        local remaining = cooldown_end - now
+        print(("⏳ Cooldown: %d:%02d left"):format(
+            math.floor(remaining/60), remaining%60))
+        return
+    end
+    
+    -- Rate limiting
+    if now - last_attempt < 5 then
+        print("⚠️ Too many attempts - wait 5s")
         return
     end
     
     active_job = job_id
-    -- Your teleport logic here
+    last_attempt = now
+    
+    -- Execute teleport
+    local success, err = pcall(function()
+        TeleportService:TeleportToPlaceInstance(game.PlaceId, job_id)
+    end)
+    
+    if success then
+        spawn(check_success) -- Start success timer
+    else
+        print("❌ TELEPORT ERROR:", err)
+        active_job = nil
+    end
 end)
 
--- AUTO-UPDATER
+-- INITIALIZE
 cooldown_end = load_cooldown()
 while true do
-    if cooldown_end > 0 then
-        local remaining = math.max(0, cooldown_end - os_time())
-        print(("⏳ %d:%02d remaining"):format(
-            math.floor(remaining/60), remaining%60))
+    if os_time() >= cooldown_end and cooldown_end ~= 0 then
+        print("✅ READY FOR NEW JOBS")
+        cooldown_end = 0
+        save_cooldown()
     end
-    task_wait(30)
+    wait(10)
 end
