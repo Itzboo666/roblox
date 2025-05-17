@@ -14,16 +14,16 @@ local task_wait       = task.wait
 local lastTeleport = 0
 local busy         = false
 local currentJobId = nil
-local cooldownEnd = 0  -- Track exact cooldown end time
+local cooldownEnd = 0
 
 -- EXECUTOR WS SUPPORT
 local connect
 if WebSocket and type(WebSocket.connect) == "function" then
     connect = WebSocket.connect
-elseif WebSocketService and type(WebSocketService.ConnectAsync) == "function" then
-    connect = function(url) return WebSocketService:ConnectAsync(url) end
+elseif syn and syn.websocket then
+    connect = syn.websocket.connect
 else
-    warn("[WebSocket] No supported API (WebSocket.connect or WSService:ConnectAsync).")
+    warn("[WebSocket] No supported API")
     return
 end
 
@@ -35,38 +35,38 @@ if not ok or not socket then
 end
 print("[WebSocket] Connected to:", WS_URL)
 
--- TELEPORT COMPLETION HANDLER
-TeleportService.TeleportCompleted:Connect(function()
-    print("[Teleport] SUCCESS - Starting cooldown")
+-- UNIVERSAL TELEPORT SUCCESS DETECTION
+local function onTeleportSuccess()
+    print("[Teleport] Success - cooldown started")
     lastTeleport = os_time()
     cooldownEnd = lastTeleport + COOLDOWN_SEC
     busy = false
     currentJobId = nil
     printCooldown()
-end)
+end
 
--- FAILURE HANDLER
-TeleportService.TeleportInitFailed:Connect(function(player, result)
-    if player == Players.LocalPlayer then
-        warn("[Teleport] FAILED ("..tostring(result)..") - Resetting")
-        busy = false
-        currentJobId = nil
-        printCooldown()
+-- FAILURE HANDLER (WORKS ON ALL EXECUTORS)
+TeleportService.TeleportInitFailed:Connect(function(_, result)
+    if result == Enum.TeleportResult.GameFull then
+        warn("[Teleport] Server full - resetting")
     end
+    busy = false
+    currentJobId = nil
+    printCooldown()
 end)
 
 -- DEBUG TIMER
 local function printCooldown()
     local remaining = cooldownEnd - os_time()
     if remaining > 0 then
-        print(("[Cooldown] Next available in: %d:%02d"):format(
+        print(("[Cooldown] Next job in: %d:%02d"):format(
             math.floor(remaining/60), remaining%60))
     else
-        print("[Cooldown] Ready to accept new jobs")
+        print("[Cooldown] Ready for new jobs")
     end
 end
 
--- COOLDOWN WATCHER
+-- COOLDOWN TRACKER
 spawn(function()
     while true do
         task_wait(60)
@@ -80,8 +80,8 @@ end)
 spawn(function()
     while true do
         task_wait(10)
-        if busy and os_time() - lastTeleport > (COOLDOWN_SEC + 30) then
-            warn("[Watchdog] Stuck teleport detected - Force reset")
+        if busy and os_time() - lastTeleport > 30 then
+            warn("[Watchdog] Timeout - resetting")
             busy = false
             currentJobId = nil
             printCooldown()
@@ -91,54 +91,49 @@ end)
 
 -- MESSAGE HANDLER
 socket.OnMessage:Connect(function(msg)
-    print("[WebSocket] Received job:", msg)
+    print("[WebSocket] Received:", msg)
     local now = os_time()
 
-    -- Message validation
-    if type(msg) ~= "string" then
-        warn("Invalid message type:", type(msg))
+    if currentJobId == msg then
+        print("[Reject] Duplicate job")
         return
     end
 
-    -- Cooldown check
     if now < cooldownEnd then
         local remaining = cooldownEnd - now
-        warn(("[Reject] Cooldown active: %d:%02d remaining"):format(
+        warn(("[Reject] Cooldown: %d:%02d left"):format(
             math.floor(remaining/60), remaining%60))
         return
     end
 
-    -- Job tracking
-    if currentJobId == msg then
-        print("[Reject] Already processing this job")
-        return
-    end
-
-    -- Load validation
     local fn, err = loadstring(msg)
     if not fn then
         warn("[Reject] Load error:", err)
         return
     end
 
-    -- Start teleport
-    print("[Accept] Starting teleport process")
+    print("[Accept] Starting teleport")
     busy = true
     currentJobId = msg
     lastTeleport = now
     
     local success, err = pcall(fn)
-    if not success then
+    if success then
+        -- Universal success detection
+        spawn(function()
+            task_wait(5)  -- Wait for teleport to complete
+            onTeleportSuccess()
+        end)
+    else
         warn("[Error] Teleport failed:", err)
         busy = false
         currentJobId = nil
-        printCooldown()
     end
 end)
 
 -- CLOSE HANDLER
 if socket.OnClose then
     socket.OnClose:Connect(function(code, reason)
-        warn(("[WebSocket] Disconnected (%s): %s"):format(tostring(code), tostring(reason)))
+        warn(("Disconnected (%s): %s"):format(tostring(code), tostring(reason)))
     end)
 end
