@@ -1,10 +1,7 @@
--- TELEPORT CLIENT WITH VISIBLE COOLDOWN TRACKER
--- Save as "TeleportClient.lua" in your autoexec folder
-
--- CONFIG
+-- REVISED TELEPORT CLIENT (FAIL-SAFE COOLDOWN)
 local WS_URL = "wss://8260-2a00-23c7-148c-9801-d03a-c5e6-1859-6c03.ngrok-free.app/ws"
-local COOLDOWN_FILE = "teleport_cooldown.txt"  -- Saved in executor's workspace
-local COOLDOWN_MINS = 8  -- 8 minute cooldown
+local COOLDOWN_FILE = "teleport_cooldown.txt"
+local COOLDOWN_MINS = 8
 
 -- SERVICES
 local TeleportService = game:GetService("TeleportService")
@@ -13,81 +10,60 @@ local task_wait = task.wait
 
 -- STATE
 local cooldown_end = 0
-local is_teleporting = false
+local active_job = nil
 
--- FILE OPERATIONS (Works in all major executors)
+-- FILE OPERATIONS
 local function save_cooldown()
     if writefile then
-        local remaining = math.max(0, cooldown_end - os_time())
-        writefile(COOLDOWN_FILE, ("%d"):format(remaining))
+        writefile(COOLDOWN_FILE, tostring(cooldown_end))
     end
 end
 
 local function load_cooldown()
-    if readfile and isfile and isfile(COOLDOWN_FILE) then
-        return os_time() + tonumber(readfile(COOLDOWN_FILE))
+    if readfile and isfile(COOLDOWN_FILE) then
+        return tonumber(readfile(COOLDOWN_FILE))
     end
     return 0
 end
 
--- COOLDOWN DISPLAY
-local function update_display()
-    local remaining = cooldown_end - os_time()
-    
-    if remaining > 0 then
-        local mins = math.floor(remaining / 60)
-        local secs = math.floor(remaining % 60)
-        print(("⏳ COOLDOWN: %d:%02d"):format(mins, secs))
-        save_cooldown()  -- Update the file
-    else
-        print("✅ READY FOR NEW JOBS")
-        if isfile and isfile(COOLDOWN_FILE) then
-            delfile(COOLDOWN_FILE)  -- Clear when done
-        end
-    end
-end
-
--- WEBSOCKET CONNECTION (Universal)
-local socket = (syn and syn.websocket or WebSocket).connect(WS_URL)
-
--- TELEPORT HANDLER
-socket.OnMessage:Connect(function(command)
-    -- Check if valid teleport command
-    if not command:find("TeleportToPlaceInstance") then
-        warn("INVALID COMMAND")
-        return
-    end
-    
-    -- Enforce cooldown
-    if os_time() < cooldown_end then
-        update_display()
-        return
-    end
-    
-    -- Execute teleport
-    is_teleporting = true
-    local fn = assert(loadstring(command))
-    
-    if pcall(fn) then
-        -- Success - start cooldown
+-- COOLDOWN HANDLERS
+TeleportService.TeleportCompleted:Connect(function()
+    if active_job then
         cooldown_end = os_time() + (COOLDOWN_MINS * 60)
         save_cooldown()
-        print("🚀 TELEPORT SUCCESS - COOLDOWN STARTED")
-    else
-        warn("⚠️ TELEPORT FAILED")
+        print("✅ COOLDOWN STARTED")
+        active_job = nil
+    end
+end)
+
+TeleportService.TeleportInitFailed:Connect(function(_, result)
+    warn("⚠️ FAILED: "..tostring(result))
+    active_job = nil
+    if writefile and isfile(COOLDOWN_FILE) then
+        delfile(COOLDOWN_FILE)
+    end
+end)
+
+-- WEBSOCKET HANDLER
+local socket = (syn and syn.websocket or WebSocket).connect(WS_URL)
+socket.OnMessage:Connect(function(job_id)
+    if os_time() < cooldown_end then
+        local remaining = math.floor((cooldown_end - os_time())/60)
+        print(("⏸️ Skipping - %d minute cooldown"):format(remaining))
+        return
     end
     
-    is_teleporting = false
-    update_display()
+    active_job = job_id
+    -- Your teleport logic here
 end)
 
--- AUTOMATIC UPDATER
-spawn(function()
-    cooldown_end = load_cooldown()  -- Load existing cooldown
-    while true do
-        update_display()
-        task_wait(30)  -- Update every 30 seconds
+-- AUTO-UPDATER
+cooldown_end = load_cooldown()
+while true do
+    if cooldown_end > 0 then
+        local remaining = math.max(0, cooldown_end - os_time())
+        print(("⏳ %d:%02d remaining"):format(
+            math.floor(remaining/60), remaining%60))
     end
-end)
-
-print("Teleport Client Active!")
+    task_wait(30)
+end
