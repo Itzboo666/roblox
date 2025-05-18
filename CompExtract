@@ -1,41 +1,94 @@
-local function getSpecificTasks()
-    openTasksPanel()
-    local tasksPanel = findTasksPanel()
+local player = game:GetService("Players").LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local screenGui = playerGui:WaitForChild("ScreenGui")
+local competitive = screenGui:WaitForChild("Competitive")
+
+-- Improved task panel finder
+local function findTasksPanel()
+    local competitiveFrame = competitive.Frame
     
-    if not tasksPanel then return {} end
-    
-    -- These are the tasks we want to track
-    local targetTasks = {
-        "Blow 78,000,000 Bubbles",
-        "Hatch 450 Cyber Eggs",
-        "Hatch 1,250 Eggs",
-        "Hatch 350 Rainbow Eggs"
-    }
-    
-    local foundTasks = {}
-    
-    for _, descendant in ipairs(tasksPanel:GetDescendants()) do
+    -- Search strategy: look for elements containing task text
+    for _, descendant in ipairs(competitiveFrame:GetDescendants()) do
         if descendant:IsA("TextLabel") then
-            for _, target in ipairs(targetTasks) do
-                if descendant.Text:find(target, 1, true) then -- simple substring match
-                    local text = descendant.Text
-                    local percentage = text:match("(%d+)%%") or "0"
-                    
-                    table.insert(foundTasks, {
-                        name = target,
-                        percentage = tonumber(percentage),
-                        fullText = text
-                    })
+            if descendant.Text:find("Blow %d+,?%d+,?%d+ Bubbles") or
+               descendant.Text:find("Hatch %d+,?%d+ Eggs") then
+                -- Return the parent frame that likely contains all tasks
+                local parent = descendant.Parent
+                while parent and parent ~= competitiveFrame do
+                    if parent:IsA("Frame") or parent:IsA("ScrollingFrame") then
+                        return parent
+                    end
+                    parent = parent.Parent
                 end
             end
         end
     end
     
-    return foundTasks
+    return nil
 end
 
--- Print the specific tasks we care about
-local importantTasks = getSpecificTasks()
-for _, task in ipairs(importantTasks) do
-    print(string.format("%s - %d%% complete", task.name, task.percentage))
+-- Task data extractor with better pattern matching
+local function extractTaskData(text)
+    local name, amount, percentage
+    
+    -- Pattern for bubble task
+    if text:find("Blow") then
+        name = "Blow Bubbles"
+        amount = text:match("Blow ([%d,]+) Bubbles")
+        percentage = text:match("(%d+)%%") or "0"
+    -- Pattern for egg tasks
+    else
+        name = text:match("Hatch ([%w%s]+) %d") or "Hatch Eggs"
+        amount = text:match("Hatch [%w%s]*([%d,]+)")
+        percentage = text:match("(%d+)%%") or "0"
+    end
+    
+    -- Clean numbers (remove commas)
+    amount = amount and tonumber(amount:gsub(",", "")) or 0
+    percentage = tonumber(percentage)
+    
+    return {
+        name = name,
+        amount = amount,
+        percentage = percentage,
+        rawText = text
+    }
+end
+
+-- Main function to get tasks with error handling
+local function getTasks()
+    if not openTasksPanel() then return {} end
+    
+    local tasksPanel = findTasksPanel()
+    if not tasksPanel then return {} end
+    
+    local tasks = {}
+    local patterns = {
+        "Blow [%d,]+ Bubbles",
+        "Hatch [%d,]+ [%w]*Eggs"
+    }
+    
+    for _, descendant in ipairs(tasksPanel:GetDescendants()) do
+        if descendant:IsA("TextLabel") then
+            for _, pattern in ipairs(patterns) do
+                if descendant.Text:find(pattern) then
+                    table.insert(tasks, extractTaskData(descendant.Text))
+                    break
+                end
+            end
+        end
+    end
+    
+    return tasks
+end
+
+-- Example usage with error handling
+local success, result = pcall(getTasks)
+if success then
+    for i, task in ipairs(result) do
+        print(string.format("%d. %s: %d (%.1f%%)",
+            i, task.name, task.amount, task.percentage))
+    end
+else
+    warn("Failed to get tasks:", result)
 end
