@@ -1,225 +1,144 @@
 --[[
-    Complete Roblox Competitive Tasks Extractor
-    Handles errors and works with dynamic GUIs
+    Simple Roblox Task Name Extractor
+    Only gets task names without percentages or numbers
+    Extra error-proof version
 --]]
 
--- Services
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
--- Player references
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Wait for GUI to load
-local function waitForGUI()
-    local maxAttempts = 10
-    local attempts = 0
-    
-    while attempts < maxAttempts do
-        local screenGui = playerGui:FindFirstChild("ScreenGui")
-        if screenGui then
-            local competitive = screenGui:FindFirstChild("Competitive")
-            if competitive and competitive:FindFirstChild("Frame") then
-                return competitive
-            end
+-- Debug function to visualize GUI structure
+local function printGuiStructure(parent, indent)
+    indent = indent or 0
+    for _, child in ipairs(parent:GetChildren()) do
+        print(string.rep("  ", indent) .. child.Name .. " (" .. child.ClassName .. ")")
+        if #child:GetChildren() > 0 then
+            printGuiStructure(child, indent + 1)
         end
-        attempts += 1
-        task.wait(1)
     end
-    
-    error("Competitive GUI not found after "..maxAttempts.." attempts")
 end
 
-local competitive = waitForGUI()
-local competitiveFrame = competitive.Frame
+-- Safe wait for GUI function
+local function waitForElement(path, timeout)
+    timeout = timeout or 10
+    local start = os.time()
+    local current = playerGui
+    
+    for _, name in ipairs(path) do
+        while true do
+            local child = current:FindFirstChild(name)
+            if child then
+                current = child
+                break
+            end
+            
+            if os.time() - start > timeout then
+                return nil
+            end
+            task.wait(0.5)
+        end
+    end
+    
+    return current
+end
 
--- Improved task button click with multiple methods
-local function clickTasksButton()
+-- Main task extraction function
+local function getTaskNames()
+    -- First get the competitive GUI safely
+    local competitive = waitForElement({"ScreenGui", "Competitive"})
+    if not competitive then
+        return {"Error: Competitive GUI not found"}
+    end
+
+    -- Debug: Uncomment this to see the GUI structure
+    -- print("GUI Structure:")
+    -- printGuiStructure(competitive)
+
+    -- Try to find tasks button by looking for text
     local tasksButton
-    
-    -- Find the tasks button through multiple possible paths
-    local buttonPaths = {
-        competitiveFrame.Sidebar.Buttons.Tasks.Button,
-        competitiveFrame:FindFirstChild("TasksButton", true),
-        competitiveFrame:FindFirstChild("BtnTasks", true)
-    }
-    
-    for _, button in ipairs(buttonPaths) do
-        if button and (button:IsA("TextButton") or button:IsA("ImageButton")) then
-            tasksButton = button
+    for _, descendant in ipairs(competitive:GetDescendants()) do
+        if (descendant:IsA("TextButton") or descendant:IsA("ImageButton")) and 
+           (descendant.Name:lower():find("task") or (descendant.Text and descendant.Text:lower():find("task"))) then
+            tasksButton = descendant
             break
         end
     end
-    
+
     if not tasksButton then
-        error("Tasks button not found")
+        return {"Error: Tasks button not found"}
     end
-    
-    -- Try different click methods
+
+    -- Try to click the button (multiple methods)
+    local clicked = false
     local clickMethods = {
         function() tasksButton:FireEvent("MouseButton1Click") end,
-        function() tasksButton.Activated:Fire() end,
-        function() 
-            if tasksButton:FindFirstChild("MouseClick") then
-                tasksButton.MouseClick:Fire()
-            end
-        end,
-        function()
-            local absolutePosition = tasksButton.AbsolutePosition
-            local absoluteSize = tasksButton.AbsoluteSize
-            local clickX = absolutePosition.X + absoluteSize.X/2
-            local clickY = absolutePosition.Y + absoluteSize.Y/2
-            
-            game:GetService("VirtualInputManager"):SendMouseButtonEvent(
-                clickX, clickY, 0, true, game, 1
-            )
-            task.wait()
-            game:GetService("VirtualInputManager"):SendMouseButtonEvent(
-                clickX, clickY, 0, false, game, 1
-            )
-        end
+        function() if tasksButton.Activated then tasksButton.Activated:Fire() end end,
+        function() if tasksButton.MouseButton1Click then tasksButton.MouseButton1Click:Fire() end end
     }
-    
+
     for _, method in ipairs(clickMethods) do
-        local success = pcall(method)
-        if success then
-            task.wait(0.5) -- Allow time for panel to open
-            return true
+        if pcall(method) then
+            clicked = true
+            break
         end
     end
-    
-    error("Failed to click tasks button")
-end
 
--- Find tasks panel by content rather than structure
-local function findTasksPanel()
-    -- First check common container names
-    local containerNames = {
-        "MainFrame", "Container", "Content", "ScrollFrame", 
-        "ScrollingFrame", "TasksFrame", "TaskList", "List"
-    }
-    
-    for _, name in ipairs(containerNames) do
-        local container = competitiveFrame:FindFirstChild(name, true)
-        if container then
-            -- Verify it contains task text
-            for _, descendant in ipairs(container:GetDescendants()) do
-                if descendant:IsA("TextLabel") and descendant.Text:find("Blow %d") then
-                    return container
+    if not clicked then
+        return {"Error: Could not click tasks button"}
+    end
+
+    -- Wait for tasks to appear
+    task.wait(1)
+
+    -- Collect all text that looks like tasks
+    local possibleTasks = {}
+    for _, descendant in ipairs(competitive:GetDescendants()) do
+        if descendant:IsA("TextLabel") or descendant:IsA("TextButton") then
+            local text = descendant.Text
+            if text and #text > 0 then
+                -- Very simple task detection - looks for verbs
+                if text:find("Hatch") or text:find("Blow") or text:find("Collect") or 
+                   text:find("Complete") or text:find("Build") or text:find("Catch") then
+                    -- Extract just the action + object (remove numbers and percentages)
+                    local cleanTask = text:gsub("%d+[,%.]?%d*", ""):gsub("%%", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+                    table.insert(possibleTasks, cleanTask)
                 end
             end
         end
     end
-    
-    -- If not found, search through all descendants
-    for _, descendant in ipairs(competitiveFrame:GetDescendants()) do
-        if descendant:IsA("TextLabel") and descendant.Text:find("Blow %d+,?%d+,?%d+ Bubbles") then
-            -- Return the nearest parent frame
-            local parent = descendant
-            while parent and parent ~= competitiveFrame do
-                if parent:IsA("Frame") or parent:IsA("ScrollingFrame") then
-                    return parent
-                end
-                parent = parent.Parent
-            end
+
+    if #possibleTasks == 0 then
+        return {"Error: No tasks detected - may need to adjust patterns"}
+    end
+
+    -- Remove duplicates
+    local uniqueTasks = {}
+    for _, task in ipairs(possibleTasks) do
+        if not table.find(uniqueTasks, task) then
+            table.insert(uniqueTasks, task)
         end
     end
-    
-    error("Tasks panel not found")
-end
 
--- Robust task data extraction
-local function extractTaskData(text)
-    local name, amount, percentage
-    
-    -- Pattern matching with fallbacks
-    if text:find("Blow") then
-        name = "Blow Bubbles"
-        amount = text:match("Blow ([%d,]+) Bubbles") or "0"
-        percentage = text:match("(%d+)%%") or "0"
-    elseif text:find("Hatch") then
-        name = text:match("Hatch ([%w%s]+) %d") or "Hatch Eggs"
-        amount = text:match("Hatch [%w%s]*([%d,]+)") or "0"
-        percentage = text:match("(%d+)%%") or "0"
-    else
-        name = "Unknown Task"
-        amount = "0"
-        percentage = "0"
-    end
-    
-    -- Clean and convert numbers
-    amount = tonumber(amount:gsub(",", "")) or 0
-    percentage = tonumber(percentage) or 0
-    
-    return {
-        name = name,
-        amount = amount,
-        percentage = percentage,
-        rawText = text
-    }
-end
-
--- Main function to get all tasks
-local function getAllTasks()
-    -- Open tasks panel
-    if not pcall(clickTasksButton) then
-        warn("Failed to open tasks panel")
-        return {}
-    end
-    
-    -- Find tasks panel
-    local tasksPanel
-    if not pcall(function() tasksPanel = findTasksPanel() end) then
-        warn("Failed to locate tasks panel")
-        return {}
-    end
-    
-    -- Collect tasks
-    local tasks = {}
-    local patterns = {
-        "Blow [%d,]+ Bubbles",
-        "Hatch [%d,]+ [%w]*Eggs?",
-        "Complete [%d,]+ [%w]+",
-        "Collect [%d,]+ [%w]+"
-    }
-    
-    for _, descendant in ipairs(tasksPanel:GetDescendants()) do
-        if descendant:IsA("TextLabel") then
-            for _, pattern in ipairs(patterns) do
-                if descendant.Text:find(pattern) then
-                    local taskData = extractTaskData(descendant.Text)
-                    table.insert(tasks, taskData)
-                    break
-                end
-            end
-        end
-    end
-    
-    if #tasks == 0 then
-        warn("No tasks found in panel")
-    end
-    
-    return tasks
+    return uniqueTasks
 end
 
 -- Run with full error protection
 local function main()
-    local success, tasks = pcall(getAllTasks)
+    local success, tasks = pcall(getTaskNames)
     
     if success then
-        print("\n=== TASKS FOUND ===")
+        print("\n=== TASK NAMES ===")
         for i, task in ipairs(tasks) do
-            print(string.format("%d. %-20s %12d (%3d%%)",
-                i, task.name, task.amount, task.percentage))
+            print(i .. ". " .. task)
         end
-        print("==================\n")
+        print("=================")
+        return tasks
     else
-        warn("CRITICAL ERROR:", tasks)
+        print("Error:", tasks)
+        return {"Error: " .. tostring(tasks)}
     end
-    
-    return tasks
 end
 
--- Execute and return results
+-- Run the script
 return main()
