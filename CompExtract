@@ -1,0 +1,115 @@
+local player = game:GetService("Players").LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+local screenGui = playerGui:WaitForChild("ScreenGui")
+local competitive = screenGui:WaitForChild("Competitive")
+local tasksButton = competitive.Frame.Sidebar.Buttons.Tasks.Button
+
+-- Function to click the tasks button
+local function openTasksPanel()
+    if tasksButton:IsA("TextButton") or tasksButton:IsA("ImageButton") then
+        -- Try different click methods
+        local success = pcall(function()
+            tasksButton:FireEvent("MouseButton1Click")
+        end)
+        
+        if not success then
+            pcall(function()
+                tasksButton.Activated:Fire()
+            end)
+        end
+    end
+end
+
+-- Function to find the tasks panel
+local function findTasksPanel()
+    -- Look in common locations
+    local locations = {
+        competitive.Frame.MainFrame,
+        competitive.Frame.Container,
+        competitive.Frame.TasksFrame,
+        screenGui:FindFirstChild("TasksPanel")
+    }
+    
+    for _, location in ipairs(locations) do
+        if location and location:IsA("Frame") then
+            return location
+        end
+    end
+    
+    -- Search through all descendants if not found
+    for _, descendant in ipairs(competitive:GetDescendants()) do
+        if descendant:IsA("Frame") and descendant.Visible and descendant.Name:lower():find("task") then
+            return descendant
+        end
+    end
+    
+    return nil
+end
+
+-- Function to extract task data
+local function extractTaskData(taskText)
+    local name, current, total, percentage
+    
+    -- Pattern for tasks like "Blow 78,000,000 Bubbles (1%)"
+    if taskText:find("Bubbles") then
+        name = "Blow Bubbles"
+        current, total = taskText:match("Blow ([%d,]+) Bubbles")
+        percentage = taskText:match("(%d+)%%") or "0"
+    -- Pattern for egg tasks
+    else
+        name = taskText:match("Hatch ([%w%s]+) %d")
+        if not name then
+            name = taskText:match("^([%w%s]+) %d") or "Unknown"
+        end
+        current, total = taskText:match("(%d+,?%d+,?%d+)")
+        percentage = taskText:match("(%d+)%%") or "0"
+    end
+    
+    -- Clean numbers (remove commas)
+    current = current and tonumber(current:gsub(",", "")) or 0
+    total = total and tonumber(total:gsub(",", "")) or 0
+    percentage = tonumber(percentage)
+    
+    return {
+        name = name,
+        current = current,
+        total = total,
+        percentage = percentage,
+        rawText = taskText
+    }
+end
+
+-- Main function to get all tasks
+local function getAllTasks()
+    openTasksPanel()
+    local tasksPanel = findTasksPanel()
+    
+    if not tasksPanel then
+        warn("Could not find tasks panel")
+        return {}
+    end
+    
+    local tasks = {}
+    
+    -- Find all text labels that look like tasks
+    for _, descendant in ipairs(tasksPanel:GetDescendants()) do
+        if descendant:IsA("TextLabel") and descendant.Text ~= "" then
+            local text = descendant.Text
+            -- Check if this looks like a task (has numbers and %)
+            if text:find("%d") and (text:find("%%") or text:find("Hatch") or text:find("Blow")) then
+                local taskData = extractTaskData(text)
+                table.insert(tasks, taskData)
+            end
+        end
+    end
+    
+    return tasks
+end
+
+-- Example usage
+local allTasks = getAllTasks()
+
+for i, task in ipairs(allTasks) do
+    print(string.format("Task %d: %s - %d/%d (%.1f%%)",
+        i, task.name, task.current, task.total, task.percentage))
+end
