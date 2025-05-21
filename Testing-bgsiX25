@@ -1,0 +1,58 @@
+local config = {
+    HeaderWidth = 250,
+    AccentColor = Color3.new(0.6, 0, 0)
+}
+local gui = loadstring(game:HttpGet("https://gitlab.com/0x45.xyz/droplib/-/raw/master/drop-minified.lua"))():Init(config, game.CoreGui)
+
+local ws
+local connected = false
+
+-- WebSocket connection management
+local function connectWS()
+    if connected then return end
+    ws = WebSocket.connect("ws://localhost:8000/ws")
+    connected = true
+    
+    ws.OnMessage:Connect(function(msg)
+        pcall(loadstring(msg))
+    end)
+    
+    ws.OnClose:Connect(function()
+        connected = false
+        connectWS() -- Reconnect
+    end)
+end
+
+connectWS()
+
+-- Egg selection UI
+local world1 = gui:CreateCategory("World 1 Eggs")
+world1:CreateSwitch("Spikey Egg", function(toggled)
+    if connected then
+        ws:Send(toggled and "subscribe:spikey-egg" or "unsubscribe:spikey-egg")
+    end
+end, false)
+
+world1:CreateSwitch("Nightmare Egg", function(toggled)
+    if connected then
+        ws:Send(toggled and "subscribe:nightmare-egg" or "unsubscribe:nightmare-egg")
+    end
+end, false)
+
+local world2 = gui:CreateCategory("World 2 Eggs")
+world2:CreateSwitch("Cyber Egg", function(toggled)
+    if connected then
+        ws:Send(toggled and "subscribe:cyber-egg" or "unsubscribe:cyber-egg")
+    end
+end, false)
+
+world2:CreateSwitch("Underworld Egg", function(toggled)
+    if connected then
+        ws:Send(toggled and "subscribe:underworld-egg" or "unsubscribe:underworld-egg")
+    end
+end, false)
+
+gui:CreateCategory("Connection"):CreateButton("Reconnect", function()
+    if connected then ws:Close() end
+    connectWS()
+end)
