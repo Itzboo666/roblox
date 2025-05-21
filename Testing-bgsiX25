@@ -1,35 +1,14 @@
--- X25 EGG TELEPORT CLIENT (COMPLETE SOLUTION)
-
-
-local WS_URL = "ws://0044-2a00-23c7-148c-9801-e038-fe46-ec5-f21e.ngrok-free.app/ws"  -- Change to your server URL
-local PLACE_ID = 85896571713843          -- Your game's place ID
-local COOLDOWN = 30                      -- Seconds between teleport attempts
-local TIMEOUT = 15                       -- Seconds to wait for success
-
--- All available egg types
-local EGG_TYPES = {
-    -- World 1 Eggs
-    "common-egg", -- 1
-    "spotted-egg", -- 2
-    "iceshard-egg", -- 3
-    "spikey-egg", -- 4
-    "magma-egg", -- 5
-    "crystal-egg", -- 6
-    "lunar-egg", -- 7
-    "void-egg", -- 8
-    "hell-egg", -- 9
-    "rainbow-egg", -- 10
-    "nightmare-egg", -- 11
-    -- World 2 Eggs
-    "showman-egg", -- 12
-    "mining-egg", -- 13
-    "cyber-egg", -- 14
-    "underworld-egg", -- 15
-    "bounty-egg" -- 16
+-- X25 EGG TELEPORT CLIENT (NGROK FIXED VERSION)
+local config = {
+    WS_URL = "wss://0044-2a00-23c7-148c-9801-e038-fe46-ec5-f21e.ngrok-free.app/ws", -- MUST use wss://
+    PLACE_ID = 85896571713843,
+    SelectedEgg = "spikey-egg",
+    Cooldown = 30,
+    Headers = {
+        ["ngrok-skip-browser-warning"] = "true",  -- Critical for ngrok
+        ["User-Agent"] = "Roblox"                 -- Bypass security
+    }
 }
-
--- Configuration (change these)
-local SELECTED_EGG = EGG_TYPES[4]  -- Default: spikey-egg (change index as needed)
 
 -- Services
 local TeleportService = game:GetService("TeleportService")
@@ -39,20 +18,29 @@ local HttpService = game:GetService("HttpService")
 -- Connection variables
 local socket
 local lastTeleportTime = 0
-local activeJob = nil
-local connectionAttempts = 0
-local MAX_ATTEMPTS = 3
 
--- WebSocket connection function
 local function connectWebSocket()
-    -- Try different WebSocket implementations
+    -- Force wss:// protocol if missing
+    local url = config.WS_URL
+    if not url:find("^wss://") and not url:find("^ws://") then
+        url = "wss://"..url
+    end
+
+    -- Implementation-specific connection
     local success, newSocket = pcall(function()
         if syn and syn.websocket then
-            return syn.websocket.connect(WS_URL)
+            return syn.websocket.connect(url, config.Headers)
         elseif WebSocket then
-            return WebSocket.connect(WS_URL)
+            -- Workaround for standard WebSocket
+            local ws = WebSocket.connect(url)
+            if config.Headers then
+                for k,v in pairs(config.Headers) do
+                    pcall(function() ws.sock:addheader(k, v) end)
+                end
+            end
+            return ws
         else
-            error("No WebSocket library found")
+            error("No WebSocket library available")
         end
     end)
 
@@ -63,107 +51,45 @@ local function connectWebSocket()
 
     -- Connection handlers
     newSocket.OnOpen:Connect(function()
-        print("✅ Connected to WebSocket server | Tracking: "..SELECTED_EGG)
-        connectionAttempts = 0
-        
-        -- Send authentication
+        print("✅ Connected to:", url)
         newSocket:Send(HttpService:JSONEncode({
             type = "auth",
             player_name = Players.LocalPlayer.Name,
-            roblox_id = tostring(Players.LocalPlayer.UserId),
-            egg_type = SELECTED_EGG
+            egg_type = config.SelectedEgg
         }))
     end)
 
     newSocket.OnMessage:Connect(function(message)
-        print("📦 Received:", message)
-        local success, data = pcall(HttpService.JSONDecode, HttpService, message)
-        if not success or data.type ~= "teleport" or data.egg_type ~= SELECTED_EGG then 
-            return 
-        end
-
-        -- Cooldown check
-        if os.time() - lastTeleportTime < COOLDOWN then
-            print(("⏳ Cooldown: %ds remaining"):format(
-                COOLDOWN - (os.time() - lastTeleportTime)))
-            return
-        end
-
-        -- Execute teleport
-        activeJob = data.job_id
-        lastTeleportTime = os.time()
-        
-        local teleportSuccess, err = pcall(function()
-            TeleportService:TeleportToPlaceInstance(PLACE_ID, activeJob)
-        end)
-
-        if not teleportSuccess then
-            warn("Teleport failed:", err)
-            activeJob = nil
-        else
-            -- Fallback success detection
-            delay(TIMEOUT, function()
-                if activeJob then
-                    print("✅ Teleport successful | Egg: "..SELECTED_EGG)
-                    activeJob = nil
-                end
-            end)
+        local data = pcall(HttpService.JSONDecode, HttpService, message)
+        if data and data.job_id then
+            if os.time() - lastTeleportTime < config.Cooldown then
+                print("⏳ Cooldown active")
+                return
+            end
+            
+            lastTeleportTime = os.time()
+            TeleportService:TeleportToPlaceInstance(config.PLACE_ID, data.job_id)
         end
     end)
 
     newSocket.OnClose:Connect(function()
-        warn("❌ Connection closed")
-        -- Automatic reconnection
-        if connectionAttempts < MAX_ATTEMPTS then
-            connectionAttempts += 1
-            task.wait(5)
-            socket = connectWebSocket()
-        end
+        warn("❌ Connection closed - Reconnecting in 5s...")
+        task.wait(5)
+        connectWebSocket()
     end)
 
     return newSocket
 end
 
--- Error handling
-TeleportService.TeleportInitFailed:Connect(function(_, result)
-    if activeJob then
-        warn("❌ Teleport failed:", result)
-        activeJob = nil
+-- Start connection
+socket = connectWebSocket()
+
+-- Keep alive
+while true do
+    if socket and (socket.Connected or (socket.sock and socket.sock.Connected)) then
+        pcall(function() socket:Send('{"type":"ping"}') end)
+    else
+        socket = connectWebSocket()
     end
-end)
-
--- Egg selection UI (simple console print)
-print("\n=== AVAILABLE EGG TYPES ===")
-for i, egg in pairs(EGG_TYPES) do
-    print(string.format("%2d: %s", i, egg))
-end
-print("Currently tracking: "..SELECTED_EGG.."\n")
-
--- Main execution
-local function main()
-    socket = connectWebSocket()
-    
-    -- Heartbeat system
-    while true do
-        if socket and socket.Connected then
-            -- Send heartbeat every 25 seconds
-            pcall(function()
-                socket:Send(HttpService:JSONEncode({
-                    type = "heartbeat",
-                    timestamp = os.time(),
-                    egg_type = SELECTED_EGG
-                }))
-            end)
-        else
-            -- Reconnect if needed
-            socket = connectWebSocket()
-        end
-        task.wait(25)
-    end
-end
-
--- Start the system
-local success, err = pcall(main)
-if not success then
-    warn("Fatal error:", err)
+    task.wait(25)
 end
