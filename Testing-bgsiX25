@@ -10,7 +10,7 @@ local connected = false
 -- WebSocket connection management
 local function connectWS()
     if connected then return end
-    ws = WebSocket.connect("ws://86bf-2a00-23c7-148c-9801-3d54-c5c3-a323-26a6.ngrok-free.app/ws")
+    ws = WebSocket.connect("ws://86bf-2a00-23c7-148c-9801-3d54-c5c3-a323-26a6.ngrok-free.app/ws") -- put actual url heere
     connected = true
     
     ws.OnMessage:Connect(function(msg)
