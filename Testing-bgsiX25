@@ -1,7 +1,7 @@
 -- X25 EGG TELEPORT CLIENT (COMPLETE SOLUTION)
 
 
-local WS_URL = "ws://localhost:8000/ws"  -- Change to your server URL
+local WS_URL = "ws://0044-2a00-23c7-148c-9801-e038-fe46-ec5-f21e.ngrok-free.app/ws"  -- Change to your server URL
 local PLACE_ID = 85896571713843          -- Your game's place ID
 local COOLDOWN = 30                      -- Seconds between teleport attempts
 local TIMEOUT = 15                       -- Seconds to wait for success
