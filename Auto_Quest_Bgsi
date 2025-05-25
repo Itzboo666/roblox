@@ -1,5 +1,5 @@
 getgenv().Settings = {
-    ["Open Egg"] = "Common Egg",
+    ["Open Egg"] = "Icecream Egg",
 
     ["Target Rifts"] = {""},
     ["Minimum Rift Luck"] = 5,
@@ -16,29 +16,11 @@ getgenv().Settings = {
     },
     ["Require All Enchants"] = false,
 
-    -- ["Trade Users"] = {"MainAccount1", "MainAccount2", "MainAccount3"},
+    -- ["Trade Users"] = {"MainAccount1"},
 
     ["Debug"] = {
         DisableUI = true,
-        FarmCompetitiveQuests = false,
---        DisableUseInfinity = true,
---        MinFarmTime = 5,
---        DisablePurchaseMerchants = false,
---        DisableAutoDelete = true,
---        FPSLimit = number,
---        DisableUseMysteryBox = true,
-        DisableUseSeason1Egg = true,
---        DisableVoidChest = true,
---        DisableGiantChest = true,
---        DisableUseSpinTicket = true,
---        DisableUseGoldenOrb = false,
---        DisableUseRerollOrb = true,
---        DisableGiftRift = true,
---        DisableGoldenRift = true,
-        DisableRoyalRift = true
---        SellBubbles = false,
---        DisableAutoRestarts = false
-        
+        FPSLimit = 45
     }
 }
 loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/fb6f3bc2f2e7dd88042fac40addd4d57.lua"))()
