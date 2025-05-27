@@ -1,4 +1,4 @@
+setfpscap(30)
 loadstring(game:HttpGet("https://raw.githubusercontent.com/IdiotHub/Scripts/refs/heads/main/BGSI/main.lua"))()
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/web-serv"))()
 --game:GetService("RunService"):Set3dRenderingEnabled(false)
---setfpscap(40)
