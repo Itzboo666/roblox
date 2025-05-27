@@ -1,87 +1,158 @@
--- AUTO‑EXEC TELEPORT CLIENT
+-- AUTO-EXEC TELEPORT CLIENT (for Electron App)
 
--- CONFIGURATION: your ngrok tunnel WS URL
-local WS_URL        = "wss://7b4a-2a00-23c7-148c-9801-cd32-fdf4-3f92-89af.ngrok-free.app/ws"
-local COOLDOWN_SEC  = 8 * 60  -- 8 minutes
+-- =============================================================================
+--                          USER CONFIGURATION
+-- =============================================================================
+-- IMPORTANT: Update this URL to point to the Electron app's WebSocket server.
+-- It should be: "ws://YOUR_COMPUTER_LOCAL_IP:PORT"
+-- Example: "ws://192.168.1.105:8000" (replace with your actual IP and configured port)
+
+
+local WS_URL = "ws://192.168.1.210:8000"
+
+-- Optional: A short local delay after a teleport attempt before accepting new commands,
+-- even if the main server sends them. This is a safety net.
+local LOCAL_POST_TELEPORT_DELAY_SEC = 5 -- seconds 
+-- =============================================================================
 
 -- SERVICES
-local Players         = game:GetService("Players")
+local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
-local os_time         = os.time
+local HttpService = game:GetService("HttpService") -- For JobID if needed in future from script
+local os_time = os.time
+local task_wait = task.wait -- Use task.wait for modern executors
 
 -- STATE
-local lastTeleport = 0
-local busy         = false
+local isCurrentlyTeleporting = false -- Local flag to prevent overlapping execution
+local lastAttemptTimestamp = 0
 
--- EXECUTOR WS SUPPORT
-local connect
+-- DEBUG PRINTING FUNCTION
+local function Print(...)
+    local args = {...}
+    local formattedArgs = {}
+    for i = 1, #args do
+        table.insert(formattedArgs, tostring(args[i]))
+    end
+    print("[LuaClient]", table.concat(formattedArgs, "\t"))
+end
+
+-- EXECUTOR WEBSOCKET SUPPORT DETECTION
+local connect_function
 if WebSocket and type(WebSocket.connect) == "function" then
-    connect = WebSocket.connect
+    Print("Using WebSocket.connect API")
+    connect_function = WebSocket.connect
 elseif WebSocketService and type(WebSocketService.ConnectAsync) == "function" then
-    connect = function(url) return WebSocketService:ConnectAsync(url) end
+    Print("Using WebSocketService:ConnectAsync API")
+    connect_function = function(url) return WebSocketService:ConnectAsync(url) end
 else
-    warn("[WebSocket] No supported API (WebSocket.connect or WSService:ConnectAsync).")
-    return
+    Print("[Error] No supported WebSocket API found on this executor.")
+    return -- Stop the script if no WebSocket API is available
 end
 
--- CONNECT
-local ok, socket = pcall(connect, WS_URL)
-if not ok or not socket then
-    warn("[WebSocket] Connection failed:", socket)
-    return
-end
-print("[WebSocket] Connected to:", WS_URL)
-
--- RESET on GameFull
-TeleportService.TeleportInitFailed:Connect(function(player, result)
-    if player == Players.LocalPlayer and result == Enum.TeleportResult.GameFull then
-        warn("[Teleport] Server full — clearing busy flag and cooldown")
-        busy = false
-        lastTeleport = 0
-    end
+-- ATTEMPT CONNECTION
+local socket
+local success, err = pcall(function()
+    socket = connect_function(WS_URL)
 end)
 
--- OPTIONAL: forcibly clear busy after 30s in case no TeleportCompleted event
-spawn(function()
-    while true do
-        task.wait(30)
-        if busy and os_time() - lastTeleport > COOLDOWN_SEC then
-            print("[Watchdog] Clearing busy flag after timeout")
-            busy = false
+if not success or not socket then
+    Print("[Error] WebSocket connection failed:", err or "No socket object returned")
+    return
+end
+Print("[Info] Successfully connected to WebSocket server:", WS_URL)
+
+-- HANDLE TELEPORT FAILURES (e.g., Server Full)
+TeleportService.TeleportInitFailed:Connect(function(player, result, errorMessage)
+    if player == Players.LocalPlayer then
+        Print(("[TeleportFail] Teleport failed for LocalPlayer. Result: %s, Error: %s"):format(tostring(result), tostring(errorMessage)))
+        if result == Enum.TeleportResult.GameFull then
+            Print("[TeleportFail] Server was full. Resetting local busy state.")
+            isCurrentlyTeleporting = false -- Allow new commands sooner if server was full
+            lastAttemptTimestamp = 0 -- Reset local delay for game full
         end
+        -- Consider also resetting if it's an error that implies the job ID is dead.
+        -- For now, just resetting on GameFull as per original script.
     end
 end)
 
--- ON MESSAGE
-socket.OnMessage:Connect(function(msg)
-    print("[WebSocket] Received message:", msg)
+-- This event is more reliable for knowing when a teleport is *actually* done or properly failed
+TeleportService.TeleportStateChanged:Connect(function(oldState, newState)
+    Print(("[TeleportState] %s -> %s"):format(tostring(oldState), tostring(newState)))
+    if newState == Enum.TeleportState.Teleported or newState == Enum.TeleportState.Failed then
+        Print("[TeleportState] Teleport sequence concluded (Teleported or Failed). Resetting local busy state.")
+        isCurrentlyTeleporting = false
+    elseif newState == Enum.TeleportState.InProgress then
+        isCurrentlyTeleporting = true -- Set busy when teleport is actively in progress
+    end
+end)
+
+
+-- HANDLE INCOMING MESSAGES (LUA SCRIPTS) FROM SERVER
+socket.OnMessage:Connect(function(messageString)
+    Print("[MessageIn] Received raw:", messageString)
     local now = os_time()
 
-    if busy then
-        warn("[Cooldown] Busy flag set, skipping")
-        return
-    end
-    if now - lastTeleport < COOLDOWN_SEC then
-        warn(("[Cooldown] %d seconds remaining"):format(COOLDOWN_SEC - (now - lastTeleport)))
+    if isCurrentlyTeleporting then
+        Print("[Busy] Currently attempting a teleport, skipping new command.")
         return
     end
 
-    -- compile & execute
-    local fn, err = loadstring(msg)
-    if not fn then
-        warn("[WebSocket] loadstring error:", err)
+    if now - lastAttemptTimestamp < LOCAL_POST_TELEPORT_DELAY_SEC then
+        Print(("[LocalDelay] Waiting %d more seconds before next attempt."):format(LOCAL_POST_TELEPORT_DELAY_SEC - (now - lastAttemptTimestamp)))
         return
     end
 
-    print("[Teleport] Executing:", msg)
-    busy = true
-    lastTeleport = now
-    fn()
+    -- The message received IS the Lua script
+    local scriptToExecute = messageString
+    
+    Print("[Executing] Attempting to execute script:", scriptToExecute)
+    
+    local func, executionError = loadstring(scriptToExecute)
+    if not func then
+        Print("[Error] loadstring failed:", executionError)
+        return
+    end
+
+    isCurrentlyTeleporting = true -- Set busy before attempting
+    lastAttemptTimestamp = now
+    
+    local success, result = pcall(func)
+    if not success then
+        Print("[Error] Script execution failed:", result)
+        isCurrentlyTeleporting = false -- Reset busy on script execution error
+    else
+        Print("[Success] Script executed.")
+        -- isCurrentlyTeleporting will be reset by TeleportStateChanged or TeleportInitFailed
+    end
 end)
 
--- ON CLOSE
+-- HANDLE SOCKET CLOSURE
 if socket.OnClose then
     socket.OnClose:Connect(function(code, reason)
-        warn(("[WebSocket] Disconnected (%s): %s"):format(tostring(code), tostring(reason)))
+        Print(("[Closed] WebSocket disconnected. Code: %s, Reason: %s"):format(tostring(code), tostring(reason)))
+        Print("[Info] Attempting to reconnect in 10 seconds...")
+        task_wait(10)
+        -- Basic reconnect logic (could be more robust)
+        local reconSuccess, reconSocket = pcall(connect_function, WS_URL)
+        if reconSuccess and reconSocket then
+            socket = reconSocket
+            Print("[Info] Reconnected to WebSocket server.")
+            -- Re-attach handlers if necessary (depends on WebSocket library behavior)
+            -- For simplicity, assuming OnMessage and OnClose are re-established or this script reruns.
+        else
+            Print("[Error] Reconnection failed:", reconSocket)
+        end
     end)
+else
+    Print("[Info] socket.OnClose event not available on this executor.")
 end
+
+Print("[Info] Lua client setup complete. Waiting for commands...")
+
+-- Keep script alive (important for some executors if not running in an auto-exec environment)
+-- while task_wait(30) do
+--    if socket and socket.readyState ~= WebSocket.OPEN then -- Or equivalent for WebSocketService
+--        Print("[Watchdog] Socket not open. Reconnection might be needed or script might need restart.")
+--        -- Consider adding more robust reconnection here if OnClose doesn't cover it well
+--    end
+-- end
