@@ -4,11 +4,8 @@
 --                          USER CONFIGURATION
 -- =============================================================================
 -- IMPORTANT: Update this URL to point to the Electron app's WebSocket server.
--- It should be: "ws://YOUR_COMPUTER_LOCAL_IP:PORT"
--- Example: "ws://192.168.1.105:8000" (replace with your actual IP and configured port)
 
-
-local WS_URL = "ws://192.168.1.210:8000"
+local WS_URL = "ws://2043-2a00-23c7-148c-9801-c864-ef6f-69eb-8e3e.ngrok-free.app:8000"
 
 -- Optional: A short local delay after a teleport attempt before accepting new commands,
 -- even if the main server sends them. This is a safety net.
