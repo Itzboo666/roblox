@@ -4,7 +4,9 @@
 --                          USER CONFIGURATION
 -- =============================================================================
 local WS_URL = "ws://192.168.1.210:8000" -- REPLACE THIS!
-local LOCAL_POST_TELEPORT_DELAY_SEC = 5 
+local LOCAL_POST_TELEPORT_DELAY_SEC = 5 -- seconds 
+
+local BUSY_FLAG_TIMEOUT_SEC = 30 
 -- =============================================================================
 
 -- SERVICES
@@ -13,10 +15,11 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService") 
 local os_time = os.time
 local task_wait = task.wait 
+local spawn_thread = task.spawn or spawn -- Compatibility for different executors
 
 -- STATE
 local isCurrentlyTeleporting = false 
-local lastAttemptTimestamp = 0
+local lastTeleportAttemptTimestamp = 0 -- Renamed for clarity
 local localPlayer = Players.LocalPlayer
 
 -- DEBUG PRINTING FUNCTION
@@ -55,14 +58,15 @@ local function attemptConnection()
     end
     Print("[Info] Successfully connected to WebSocket server:", WS_URL)
     
-    -- Send initial identification message with Roblox username
     if localPlayer and localPlayer.Name then
         local id_payload = {
             type = "identification",
             username = localPlayer.Name,
-            userId = localPlayer.UserId -- Sending UserId as well might be useful
+            userId = localPlayer.UserId
         }
-        pcall(function() socket:Send(HttpService:JSONEncode(id_payload)) end)
+        pcall(function() 
+            if socket and socket.Send then socket:Send(HttpService:JSONEncode(id_payload)) end
+        end)
         Print("[Info] Sent identification to server:", localPlayer.Name)
     else
         Print("[Warning] Could not get LocalPlayer name for identification.")
@@ -75,25 +79,28 @@ if not attemptConnection() then
     return
 end
 
-
--- HANDLE TELEPORT FAILURES / STATE CHANGES
+-- HANDLE TELEPORT FAILURES (e.g., Server Full) - Reverting to simpler logic
 TeleportService.TeleportInitFailed:Connect(function(player, result, errorMessage)
     if player == LocalPlayer then
         Print(("[TeleportFail] Teleport failed. Result: %s, Error: %s"):format(tostring(result), tostring(errorMessage)))
-        isCurrentlyTeleporting = false 
+        isCurrentlyTeleporting = false -- Reset busy flag immediately on any failure
         if result == Enum.TeleportResult.GameFull then
-            lastAttemptTimestamp = 0 
+            Print("[TeleportFail] Server was full. Allowing immediate retry if new command comes.")
+            lastTeleportAttemptTimestamp = 0 -- Reset local delay as main server will handle cooldown
         end
     end
 end)
 
-TeleportService.TeleportStateChanged:Connect(function(oldState, newState)
-    Print(("[TeleportState] %s -> %s"):format(tostring(oldState), tostring(newState)))
-    if newState == Enum.TeleportState.Teleported or newState == Enum.TeleportState.Failed then
-        Print("[TeleportState] Teleport sequence concluded. Resetting local busy state.")
-        isCurrentlyTeleporting = false
-    elseif newState == Enum.TeleportState.InProgress then
-        isCurrentlyTeleporting = true 
+-- WATCHDOG: Forcibly clear busy flag if no TeleportInitFailed event after a timeout
+spawn_thread(function()
+    while true do
+        task_wait(BUSY_FLAG_TIMEOUT_SEC)
+        if isCurrentlyTeleporting then
+             -- If busy for longer than the timeout, and no TeleportInitFailed occurred,
+             -- assume it might be stuck or succeeded without event (less likely but possible).
+            Print("[Watchdog] Teleport was busy for too long. Forcibly clearing busy flag.")
+            isCurrentlyTeleporting = false
+        end
     end
 end)
 
@@ -103,12 +110,13 @@ socket.OnMessage:Connect(function(messageString)
     local now = os_time()
 
     if isCurrentlyTeleporting then
-        Print("[Busy] Currently attempting a teleport, skipping new command.")
+        Print("[Busy] isCurrentlyTeleporting flag is set, skipping new command.")
         return
     end
 
-    if now - lastAttemptTimestamp < LOCAL_POST_TELEPORT_DELAY_SEC then
-        Print(("[LocalDelay] Waiting %d more seconds before next attempt."):format(LOCAL_POST_TELEPORT_DELAY_SEC - (now - lastAttemptTimestamp)))
+    -- The main cooldown is on the server (Electron app), but this is a small local buffer.
+    if now - lastTeleportAttemptTimestamp < LOCAL_POST_TELEPORT_DELAY_SEC then
+        Print(("[LocalDelay] Waiting %d more seconds before next attempt."):format(LOCAL_POST_TELEPORT_DELAY_SEC - (now - lastTeleportAttemptTimestamp)))
         return
     end
 
@@ -122,14 +130,18 @@ socket.OnMessage:Connect(function(messageString)
     end
 
     isCurrentlyTeleporting = true 
-    lastAttemptTimestamp = now
+    lastTeleportAttemptTimestamp = now -- Record time of this attempt
     
     local success, result = pcall(func)
     if not success then
         Print("[Error] Script execution failed:", result)
-        isCurrentlyTeleporting = false 
+        -- isCurrentlyTeleporting will be reset by TeleportInitFailed or watchdog
     else
-        Print("[Success] Script executed.")
+        Print("[Success] Script execution initiated via pcall.")
+        -- We don't reset isCurrentlyTeleporting here; TeleportInitFailed or the watchdog will handle it.
+        -- If the teleport succeeds, the player leaves the server, and this script instance ends.
+        -- If it fails, TeleportInitFailed should catch it.
+        -- If neither, watchdog eventually clears it.
     end
 end)
 
@@ -137,13 +149,11 @@ end)
 if socket.OnClose then
     socket.OnClose:Connect(function(code, reason)
         Print(("[Closed] WebSocket disconnected. Code: %s, Reason: %s"):format(tostring(code), tostring(reason)))
-        isCurrentlyTeleporting = false -- Reset busy state on disconnect
+        isCurrentlyTeleporting = false 
         Print("[Info] Attempting to reconnect in 10 seconds...")
         task_wait(10)
         if attemptConnection() then
              Print("[Info] Reconnected successfully after OnClose.")
-             -- Re-attach OnMessage and OnClose if the WebSocket library requires it upon new socket object
-             -- For many executors, the global 'socket' variable being updated is enough.
         else
             Print("[Error] Reconnection after OnClose failed.")
         end
