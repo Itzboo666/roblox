@@ -1,7 +1,7 @@
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
-local TextChatService = game:GetService("TextChatService")
+--local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" -- Ensure this is your PC's local IP where Sniper is running
