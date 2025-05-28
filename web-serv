@@ -20,6 +20,7 @@ local spawn_thread = task.spawn or spawn
 local isCurrentlyTeleporting = false 
 local lastTeleportAttemptTimestamp = 0 
 local localPlayer = Players.LocalPlayer
+local socket 
 
 -- DEBUG PRINTING FUNCTION
 local function Print(...)
@@ -28,145 +29,199 @@ local function Print(...)
     for i = 1, #args do
         table.insert(formattedArgs, tostring(args[i]))
     end
-    print("[LuaClient]", table.concat(formattedArgs, "\t"))
+    print("[LuaClientDEBUG]", table.concat(formattedArgs, "\t")) -- Changed prefix for easy filtering
 end
+
+Print("Script started. Executor environment type:", typeof(WebSocket), typeof(WebSocketService))
 
 -- EXECUTOR WEBSOCKET SUPPORT DETECTION
 local connect_function
 if WebSocket and type(WebSocket.connect) == "function" then
-    Print("Using WebSocket.connect API")
+    Print("Using WebSocket.connect API.")
     connect_function = WebSocket.connect
 elseif WebSocketService and type(WebSocketService.ConnectAsync) == "function" then
-    Print("Using WebSocketService:ConnectAsync API")
+    Print("Using WebSocketService:ConnectAsync API.")
     connect_function = function(url) return WebSocketService:ConnectAsync(url) end
 else
-    Print("[Error] No supported WebSocket API found on this executor.")
+    Print("[Error] No supported WebSocket API found on this executor. Script will not proceed.")
     return 
 end
 
--- ATTEMPT CONNECTION
-local socket
+-- FORWARD DECLARATION FOR EVENT HANDLERS
+local attachEventHandlers
+
+-- ATTEMPT CONNECTION FUNCTION
 local function attemptConnection()
-    Print("[Info] Attempting WebSocket connection to:", WS_URL)
-    local success, result = pcall(function()
-        socket = connect_function(WS_URL)
+    Print("[ConnectAttempt] Attempting WebSocket connection to:", WS_URL)
+    local success, resultOrSocket = pcall(function()
+        return connect_function(WS_URL) 
     end)
-    if not success or not socket then
-        Print("[Error] WebSocket connection failed:", result or "No socket object returned")
+
+    if not success then
+        Print("[ConnectAttempt][Error] pcall failed during connect_function:", resultOrSocket)
+        socket = nil
         return false
     end
-    Print("[Info] Successfully connected to WebSocket server:", WS_URL)
+
+    if not resultOrSocket then
+        Print("[ConnectAttempt][Error] connect_function returned nil. Connection failed.")
+        socket = nil
+        return false
+    end
     
-    if localPlayer and localPlayer.Name then
+    socket = resultOrSocket -- Assign to global socket
+    Print("[ConnectAttempt] Successfully connected to WebSocket server. Socket object:", socket)
+    
+    if localPlayer and localPlayer.Name and localPlayer.UserId then
         local id_payload = {
             type = "identification",
             username = localPlayer.Name,
             userId = localPlayer.UserId
         }
-        -- Ensure socket is valid before sending
+        Print("[ConnectAttempt] Preparing to send identification payload:", HttpService:JSONEncode(id_payload))
         if socket and socket.Send then
             local sendSuccess, sendError = pcall(function() socket:Send(HttpService:JSONEncode(id_payload)) end)
             if sendSuccess then
-                Print("[Info] Sent identification to server:", localPlayer.Name)
+                Print("[ConnectAttempt] Sent identification to server:", localPlayer.Name, "UserID:", localPlayer.UserId)
             else
-                Print("[Error] Failed to send identification:", sendError)
+                Print("[ConnectAttempt][Error] Failed to send identification:", sendError)
             end
         else
-            Print("[Warning] Socket not valid for sending identification.")
+            Print("[ConnectAttempt][Warning] Socket not valid or Send method missing for sending identification.")
         end
     else
-        Print("[Warning] Could not get LocalPlayer name/userId for identification.")
+        Print("[ConnectAttempt][Warning] Could not get LocalPlayer name/userId for identification. LocalPlayer:", localPlayer)
+    end
+
+    if attachEventHandlers then 
+        Print("[ConnectAttempt] Attaching event handlers to new socket.")
+        attachEventHandlers() 
+    else
+        Print("[ConnectAttempt][Error] attachEventHandlers function is nil. Cannot attach handlers.")
     end
     return true
 end
 
+-- DEFINE EVENT HANDLERS FUNCTION
+attachEventHandlers = function()
+    Print("[AttachHandlers] Entering attachEventHandlers. Socket object:", socket)
+    if not socket then 
+        Print("[AttachHandlers][Error] Socket is nil. Cannot attach event handlers.")
+        return 
+    end
+
+    if not socket.OnMessage then
+        Print("[AttachHandlers][Error] socket.OnMessage is nil. Cannot attach message handler.")
+        return
+    end
+    Print("[AttachHandlers] socket.OnMessage type:", type(socket.OnMessage))
+
+
+    socket.OnMessage:Connect(function(messageString)
+        Print("[OnMessage] === New Message Received ===")
+        Print("[OnMessage] Raw message string:", messageString)
+        local now = os_time()
+
+        if isCurrentlyTeleporting then
+            Print("[OnMessage][Busy] isCurrentlyTeleporting is true. Skipping command.")
+            return
+        end
+
+        local timeSinceLastAttempt = now - lastTeleportAttemptTimestamp
+        Print("[OnMessage] Time since last attempt:", timeSinceLastAttempt, "s. Required local delay:", LOCAL_POST_TELEPORT_DELAY_SEC, "s.")
+        if timeSinceLastAttempt < LOCAL_POST_TELEPORT_DELAY_SEC then
+            Print(("[OnMessage][LocalDelay] Waiting %d more seconds before next attempt."):format(LOCAL_POST_TELEPORT_DELAY_SEC - timeSinceLastAttempt))
+            return
+        end
+
+        local scriptToExecute = messageString
+        Print("[OnMessage] Script to execute:", scriptToExecute)
+        
+        isCurrentlyTeleporting = true 
+        lastTeleportAttemptTimestamp = now 
+        Print("[OnMessage] Set isCurrentlyTeleporting=true, lastTeleportAttemptTimestamp=", lastTeleportAttemptTimestamp)
+        
+        local func, compilationError = loadstring(scriptToExecute)
+        if not func then
+            Print("[OnMessage][Error] loadstring compilation failed:", compilationError)
+            isCurrentlyTeleporting = false 
+            return
+        end
+        Print("[OnMessage] loadstring successful. Function created:", func)
+
+        Print("[OnMessage] About to pcall the function...")
+        local success, executionResult = pcall(func)
+        
+        if not success then
+            Print("[OnMessage][Error] Script execution via pcall failed. Error:", executionResult)
+            -- isCurrentlyTeleporting will be reset by TeleportInitFailed or watchdog
+        else
+            Print("[OnMessage][Success] Script execution pcall succeeded. Result (if any):", executionResult)
+            -- If teleport is successful, player leaves.
+            -- If fails, TeleportInitFailed should handle it. Watchdog is backup.
+        end
+        Print("[OnMessage] === Message Handling Complete ===")
+    end)
+    Print("[AttachHandlers] OnMessage handler attached.")
+
+    if socket.OnClose then
+        socket.OnClose:Connect(function(code, reason)
+            Print(("[OnClose] WebSocket disconnected. Code: %s, Reason: %s"):format(tostring(code), tostring(reason)))
+            isCurrentlyTeleporting = false 
+            Print("[OnClose] Attempting to reconnect in 10 seconds...")
+            task_wait(10)
+            if attemptConnection() then
+                 Print("[OnClose] Reconnected successfully after OnClose.")
+            else
+                Print("[OnClose][Error] Reconnection after OnClose failed.")
+            end
+        end)
+        Print("[AttachHandlers] OnClose handler attached.")
+    else
+        Print("[AttachHandlers][Info] socket.OnClose event not available on this executor.")
+    end
+    Print("[AttachHandlers] Event handler attachment finished.")
+end
+
+-- INITIAL CONNECTION ATTEMPT
 if not attemptConnection() then
-    Print("[Fatal] Initial connection failed. Script may not function.")
-    return
+    Print("[Fatal] Initial connection failed. Script may not function fully and will not retry initial connection.")
+    return 
 end
 
 -- HANDLE TELEPORT FAILURES 
-TeleportService.TeleportInitFailed:Connect(function(player, result, errorMessage)
-    if player == LocalPlayer then
-        Print(("[TeleportFail] Teleport failed. Result: %s, Error: %s"):format(tostring(result), tostring(errorMessage)))
-        isCurrentlyTeleporting = false 
-        if result == Enum.TeleportResult.GameFull then
-            Print("[TeleportFail] Server was full. Local delay reset.")
-            lastTeleportAttemptTimestamp = 0 
+if TeleportService and TeleportService.TeleportInitFailed then
+    TeleportService.TeleportInitFailed:Connect(function(player, result, errorMessage)
+        Print("[TeleportInitFailed] Event fired.")
+        if player == LocalPlayer then
+            Print(("[TeleportInitFailed] For LocalPlayer. Result: %s, Error: %s"):format(tostring(result), tostring(errorMessage)))
+            isCurrentlyTeleporting = false 
+            Print("[TeleportInitFailed] Set isCurrentlyTeleporting=false.")
+            if result == Enum.TeleportResult.GameFull then
+                Print("[TeleportInitFailed] Server was full. Resetting lastTeleportAttemptTimestamp for local delay.")
+                lastTeleportAttemptTimestamp = 0 
+            end
+        else
+            Print("[TeleportInitFailed] Event for another player:", player.Name)
         end
-    end
-end)
+    end)
+    Print("[Info] TeleportInitFailed handler attached.")
+else
+    Print("[Warning] TeleportService.TeleportInitFailed not available.")
+end
 
--- WATCHDOG (reverting to a simpler check based on your original script's intent)
+
+-- WATCHDOG
+Print("[Watchdog] Starting watchdog thread.")
 spawn_thread(function()
-    while task_wait(BUSY_FLAG_TIMEOUT_SEC / 2) do -- Check more frequently
+    while true do
+        task_wait(BUSY_FLAG_TIMEOUT_SEC / 2) 
+        -- Print("[Watchdog] Check. isCurrentlyTeleporting:", isCurrentlyTeleporting, "Time since last attempt:", os_time() - lastTeleportAttemptTimestamp)
         if isCurrentlyTeleporting and (os_time() - lastTeleportAttemptTimestamp > BUSY_FLAG_TIMEOUT_SEC) then
-            Print("[Watchdog] Teleport was busy for > " .. BUSY_FLAG_TIMEOUT_SEC .. "s. Forcibly clearing busy flag.")
+            Print("[Watchdog] Teleport was busy for > " .. BUSY_FLAG_TIMEOUT_SEC .. "s. Forcibly clearing isCurrentlyTeleporting flag.")
             isCurrentlyTeleporting = false
         end
     end
 end)
-
--- HANDLE INCOMING MESSAGES (LUA SCRIPTS) FROM SERVER
-socket.OnMessage:Connect(function(messageString)
-    Print("[MessageIn] Received raw:", messageString)
-    local now = os_time()
-
-    if isCurrentlyTeleporting then
-        Print("[Busy] isCurrentlyTeleporting flag is set, skipping new command.")
-        return
-    end
-
-    if now - lastTeleportAttemptTimestamp < LOCAL_POST_TELEPORT_DELAY_SEC then
-        Print(("[LocalDelay] Waiting %d more seconds before next attempt."):format(LOCAL_POST_TELEPORT_DELAY_SEC - (now - lastTeleportAttemptTimestamp)))
-        return
-    end
-
-    local scriptToExecute = messageString
-    Print("[Executing] Attempting to execute script:", scriptToExecute)
-    
-    isCurrentlyTeleporting = true 
-    lastTeleportAttemptTimestamp = now 
-    
-    -- Directly execute the script using loadstring and pcall for safety
-    -- This is closer to how your original Python script's Lua would have been handled
-    -- by an executor after being sent.
-    local func, compilationError = loadstring(scriptToExecute)
-    if not func then
-        Print("[Error] loadstring compilation failed:", compilationError)
-        isCurrentlyTeleporting = false -- Reset if compilation fails
-        return
-    end
-
-    local success, executionResult = pcall(func)
-    if not success then
-        Print("[Error] Script execution via pcall failed:", executionResult)
-        -- isCurrentlyTeleporting will be reset by TeleportInitFailed or watchdog in this case
-    else
-        Print("[Success] Script execution initiated via pcall.")
-        -- If teleport is successful, player leaves, script might terminate.
-        -- If teleport call itself errors before TeleportService events, TeleportInitFailed might not fire.
-        -- Watchdog is a backup.
-        -- For many teleports, the script won't reach here if successful as client changes place.
-        -- No need to manually set isCurrentlyTeleporting to false here; let events or watchdog handle it.
-    end
-end)
-
--- HANDLE SOCKET CLOSURE & RECONNECTION ATTEMPT
-if socket.OnClose then
-    socket.OnClose:Connect(function(code, reason)
-        Print(("[Closed] WebSocket disconnected. Code: %s, Reason: %s"):format(tostring(code), tostring(reason)))
-        isCurrentlyTeleporting = false 
-        Print("[Info] Attempting to reconnect in 10 seconds...")
-        task_wait(10)
-        if attemptConnection() then
-             Print("[Info] Reconnected successfully after OnClose.")
-        else
-            Print("[Error] Reconnection after OnClose failed.")
-        end
-    end)
-else
-    Print("[Info] socket.OnClose event not available on this executor.")
-end
 
 Print("[Info] Lua client setup complete. Waiting for commands...")
