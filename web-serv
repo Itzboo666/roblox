@@ -4,8 +4,7 @@
 --                          USER CONFIGURATION
 -- =============================================================================
 local WS_URL = "ws://192.168.1.210:8000" -- REPLACE THIS!
-local LOCAL_POST_TELEPORT_DELAY_SEC = 5 -- seconds 
-
+local LOCAL_POST_TELEPORT_DELAY_SEC = 3 -- Reduced slightly, server handles main cooldown
 local BUSY_FLAG_TIMEOUT_SEC = 30 
 -- =============================================================================
 
@@ -15,11 +14,11 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService") 
 local os_time = os.time
 local task_wait = task.wait 
-local spawn_thread = task.spawn or spawn -- Compatibility for different executors
+local spawn_thread = task.spawn or spawn 
 
 -- STATE
 local isCurrentlyTeleporting = false 
-local lastTeleportAttemptTimestamp = 0 -- Renamed for clarity
+local lastTeleportAttemptTimestamp = 0 
 local localPlayer = Players.LocalPlayer
 
 -- DEBUG PRINTING FUNCTION
@@ -64,12 +63,19 @@ local function attemptConnection()
             username = localPlayer.Name,
             userId = localPlayer.UserId
         }
-        pcall(function() 
-            if socket and socket.Send then socket:Send(HttpService:JSONEncode(id_payload)) end
-        end)
-        Print("[Info] Sent identification to server:", localPlayer.Name)
+        -- Ensure socket is valid before sending
+        if socket and socket.Send then
+            local sendSuccess, sendError = pcall(function() socket:Send(HttpService:JSONEncode(id_payload)) end)
+            if sendSuccess then
+                Print("[Info] Sent identification to server:", localPlayer.Name)
+            else
+                Print("[Error] Failed to send identification:", sendError)
+            end
+        else
+            Print("[Warning] Socket not valid for sending identification.")
+        end
     else
-        Print("[Warning] Could not get LocalPlayer name for identification.")
+        Print("[Warning] Could not get LocalPlayer name/userId for identification.")
     end
     return true
 end
@@ -79,26 +85,23 @@ if not attemptConnection() then
     return
 end
 
--- HANDLE TELEPORT FAILURES (e.g., Server Full) - Reverting to simpler logic
+-- HANDLE TELEPORT FAILURES 
 TeleportService.TeleportInitFailed:Connect(function(player, result, errorMessage)
     if player == LocalPlayer then
         Print(("[TeleportFail] Teleport failed. Result: %s, Error: %s"):format(tostring(result), tostring(errorMessage)))
-        isCurrentlyTeleporting = false -- Reset busy flag immediately on any failure
+        isCurrentlyTeleporting = false 
         if result == Enum.TeleportResult.GameFull then
-            Print("[TeleportFail] Server was full. Allowing immediate retry if new command comes.")
-            lastTeleportAttemptTimestamp = 0 -- Reset local delay as main server will handle cooldown
+            Print("[TeleportFail] Server was full. Local delay reset.")
+            lastTeleportAttemptTimestamp = 0 
         end
     end
 end)
 
--- WATCHDOG: Forcibly clear busy flag if no TeleportInitFailed event after a timeout
+-- WATCHDOG (reverting to a simpler check based on your original script's intent)
 spawn_thread(function()
-    while true do
-        task_wait(BUSY_FLAG_TIMEOUT_SEC)
-        if isCurrentlyTeleporting then
-             -- If busy for longer than the timeout, and no TeleportInitFailed occurred,
-             -- assume it might be stuck or succeeded without event (less likely but possible).
-            Print("[Watchdog] Teleport was busy for too long. Forcibly clearing busy flag.")
+    while task_wait(BUSY_FLAG_TIMEOUT_SEC / 2) do -- Check more frequently
+        if isCurrentlyTeleporting and (os_time() - lastTeleportAttemptTimestamp > BUSY_FLAG_TIMEOUT_SEC) then
+            Print("[Watchdog] Teleport was busy for > " .. BUSY_FLAG_TIMEOUT_SEC .. "s. Forcibly clearing busy flag.")
             isCurrentlyTeleporting = false
         end
     end
@@ -114,7 +117,6 @@ socket.OnMessage:Connect(function(messageString)
         return
     end
 
-    -- The main cooldown is on the server (Electron app), but this is a small local buffer.
     if now - lastTeleportAttemptTimestamp < LOCAL_POST_TELEPORT_DELAY_SEC then
         Print(("[LocalDelay] Waiting %d more seconds before next attempt."):format(LOCAL_POST_TELEPORT_DELAY_SEC - (now - lastTeleportAttemptTimestamp)))
         return
@@ -123,25 +125,30 @@ socket.OnMessage:Connect(function(messageString)
     local scriptToExecute = messageString
     Print("[Executing] Attempting to execute script:", scriptToExecute)
     
-    local func, executionError = loadstring(scriptToExecute)
+    isCurrentlyTeleporting = true 
+    lastTeleportAttemptTimestamp = now 
+    
+    -- Directly execute the script using loadstring and pcall for safety
+    -- This is closer to how your original Python script's Lua would have been handled
+    -- by an executor after being sent.
+    local func, compilationError = loadstring(scriptToExecute)
     if not func then
-        Print("[Error] loadstring failed:", executionError)
+        Print("[Error] loadstring compilation failed:", compilationError)
+        isCurrentlyTeleporting = false -- Reset if compilation fails
         return
     end
 
-    isCurrentlyTeleporting = true 
-    lastTeleportAttemptTimestamp = now -- Record time of this attempt
-    
-    local success, result = pcall(func)
+    local success, executionResult = pcall(func)
     if not success then
-        Print("[Error] Script execution failed:", result)
-        -- isCurrentlyTeleporting will be reset by TeleportInitFailed or watchdog
+        Print("[Error] Script execution via pcall failed:", executionResult)
+        -- isCurrentlyTeleporting will be reset by TeleportInitFailed or watchdog in this case
     else
         Print("[Success] Script execution initiated via pcall.")
-        -- We don't reset isCurrentlyTeleporting here; TeleportInitFailed or the watchdog will handle it.
-        -- If the teleport succeeds, the player leaves the server, and this script instance ends.
-        -- If it fails, TeleportInitFailed should catch it.
-        -- If neither, watchdog eventually clears it.
+        -- If teleport is successful, player leaves, script might terminate.
+        -- If teleport call itself errors before TeleportService events, TeleportInitFailed might not fire.
+        -- Watchdog is a backup.
+        -- For many teleports, the script won't reach here if successful as client changes place.
+        -- No need to manually set isCurrentlyTeleporting to false here; let events or watchdog handle it.
     end
 end)
 
