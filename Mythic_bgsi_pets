@@ -1,0 +1,652 @@
+[
+    {
+        "name": "Mythic Dementor",
+        "value": null,
+        "original_value_str": "O/C"
+    },
+    {
+        "name": "Mythic MAN FACE GOD",
+        "value": null,
+        "original_value_str": "O/C"
+    },
+    {
+        "name": "Mythic Godly Gem",
+        "value": null,
+        "original_value_str": "O/C"
+    },
+    {
+        "name": "Mythic Giant Chocolate Chicken",
+        "value": 350000,
+        "original_value_str": "350,000"
+    },
+    {
+        "name": "Mythic Lord Shock",
+        "value": 280000,
+        "original_value_str": "280,000"
+    },
+    {
+        "name": "Mythic Easter Basket",
+        "value": 265000,
+        "original_value_str": "265,000"
+    },
+    {
+        "name": "Mythic Queen Kitty",
+        "value": 106000,
+        "original_value_str": "106,000"
+    },
+    {
+        "name": "Mythic Wolflord",
+        "value": 90000,
+        "original_value_str": "90,000"
+    },
+    {
+        "name": "Mythic Royal Trophy",
+        "value": 53000,
+        "original_value_str": "53,000"
+    },
+    {
+        "name": "Mythic D0ggy1337",
+        "value": 35000,
+        "original_value_str": "35,000"
+    },
+    {
+        "name": "Mythic Avernus",
+        "value": 23000,
+        "original_value_str": "23,000"
+    },
+    {
+        "name": "Mythic Luminosity",
+        "value": 19500,
+        "original_value_str": "19,500"
+    },
+    {
+        "name": "Mythic Elite Soul",
+        "value": 8500,
+        "original_value_str": "8,500"
+    },
+    {
+        "name": "Mythic King Doggy",
+        "value": 7500,
+        "original_value_str": "7,500"
+    },
+    {
+        "name": "Mythic Patronus",
+        "value": 7000,
+        "original_value_str": "7,000"
+    },
+    {
+        "name": "Mythic Mech Robot",
+        "value": 4500,
+        "original_value_str": "4,500"
+    },
+    {
+        "name": "Mythic The Overlord",
+        "value": 4000,
+        "original_value_str": "4,000"
+    },
+    {
+        "name": "Mythic The Sun",
+        "value": 4000,
+        "original_value_str": "4,000"
+    },
+    {
+        "name": "Mythic Chocolate Sundae Champion",
+        "value": 4000,
+        "original_value_str": "4,000"
+    },
+    {
+        "name": "Mythic Mint Sundae Champion",
+        "value": 4000,
+        "original_value_str": "4,000"
+    },
+    {
+        "name": "Mythic Vanilla Sundae Champion",
+        "value": 4000,
+        "original_value_str": "4,000"
+    },
+    {
+        "name": "Mythic Strawberry Sundae Champion",
+        "value": 4000,
+        "original_value_str": "4,000"
+    },
+    {
+        "name": "Mythic Seraph",
+        "value": 3200,
+        "original_value_str": "3,200"
+    },
+    {
+        "name": "Mythic Manarium",
+        "value": 900,
+        "original_value_str": "900"
+    },
+    {
+        "name": "Mythic Capybara Plushie",
+        "value": 600,
+        "original_value_str": "600"
+    },
+    {
+        "name": "Mythic Bongo Kitty",
+        "value": 540,
+        "original_value_str": "540"
+    },
+    {
+        "name": "Mythic Cardinal Bunny",
+        "value": 400,
+        "original_value_str": "400"
+    },
+    {
+        "name": "Mythic Midas",
+        "value": 350,
+        "original_value_str": "350"
+    },
+    {
+        "name": "Mythic Crescent Empress",
+        "value": 325,
+        "original_value_str": "325"
+    },
+    {
+        "name": "Mythic Fire Guardian",
+        "value": 300,
+        "original_value_str": "300"
+    },
+    {
+        "name": "Mythic Noctis",
+        "value": 270,
+        "original_value_str": "270"
+    },
+    {
+        "name": "Mythic Moonlight",
+        "value": 250,
+        "original_value_str": "250"
+    },
+    {
+        "name": "Mythic Toilet Doggy",
+        "value": 250,
+        "original_value_str": "250"
+    },
+    {
+        "name": "Mythic Holy Egg",
+        "value": 220,
+        "original_value_str": "220"
+    },
+    {
+        "name": "Mythic King Pufferfish",
+        "value": 200,
+        "original_value_str": "200"
+    },
+    {
+        "name": "Mythic Pineapple Tourist",
+        "value": 200,
+        "original_value_str": "200"
+    },
+    {
+        "name": "Mythic Corrupt Glitch",
+        "value": 200,
+        "original_value_str": "200"
+    },
+    {
+        "name": "Mythic Chocolate Bunny",
+        "value": 200,
+        "original_value_str": "200"
+    },
+    {
+        "name": "Mythic Sundae Cone",
+        "value": 175,
+        "original_value_str": "175"
+    },
+    {
+        "name": "Mythic Moon Deer",
+        "value": 150,
+        "original_value_str": "150"
+    },
+    {
+        "name": "Mythic Ophanim",
+        "value": 140,
+        "original_value_str": "140"
+    },
+    {
+        "name": "Mythic NULLVoid",
+        "value": 135,
+        "original_value_str": "135"
+    },
+    {
+        "name": "Mythic Trio Cube",
+        "value": 90,
+        "original_value_str": "90"
+    },
+    {
+        "name": "Mythic Rainbow Marshmellow",
+        "value": 45,
+        "original_value_str": "45"
+    },
+    {
+        "name": "Mythic Bionic Shard",
+        "value": 40,
+        "original_value_str": "40"
+    },
+    {
+        "name": "Mythic Rainbow Shock",
+        "value": 30,
+        "original_value_str": "30"
+    },
+    {
+        "name": "Mythic Game Master",
+        "value": 25,
+        "original_value_str": "25"
+    },
+    {
+        "name": "Mythic Soarin Surfer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Demonweb",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Dreamscape",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Popsicle Trio",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Dragonfruit",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Overlord Plushie",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Everblaze",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Ancient One",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Monolith",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Rigby",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Kiwi Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Hyperwave Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Star Charm",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Ring Master",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Neon Wyvern",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Neon Wire Eye",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Equalizer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Water Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Royal Guardian",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Darkness Creature",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Crimson Bloodmoon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Chest Mimic",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Inferno Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Flying Pig",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Kraken",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Bug Amber",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Air Basilisk",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Ice Basilisk",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Captain Monkey",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Carrot Pufferfish",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Fire Basilisk",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Mangorium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Fossil Ghost",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Crystal Teddy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Fossilus",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Infernal",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Captains Curse",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Electric Basilisk",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Glyph Warrior",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Runic Defender",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Beelzebub",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Hexarium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Dualcorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Easter Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Electra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Dark Phoenix",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Abyssal Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Sigma Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Ethereal Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Seraphic Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Lunar Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Sweet Treat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic ROUND",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Demonic Hydra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Virus",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Emerald Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Inferno Cube",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Green Hydra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Hacker Prism",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Moonburst",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Sunburst",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Neon Elemental",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Crystal Unicorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Prismatic",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Prophet",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Sir Doggyton",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Crimson Butterfly",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Jackpot",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Magmas",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Space Invader",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Nebula",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Cyborg Phoenix",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Stone Gargoyle",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Unicorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Dragon Plushie",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Dice Split",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Silly Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Diamond Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Parasite",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Starlight",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Overseer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic Diamond Hexarium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mythic DOOF",
+        "value": null,
+        "original_value_str": "N/A"
+    }
+]
