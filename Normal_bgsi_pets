@@ -1,1 +1,1357 @@
-
+[
+    {
+        "name": "MAN FACE GOD",
+        "value": 220000,
+        "original_value_str": "220,000"
+    },
+    {
+        "name": "Dementor",
+        "value": 140000,
+        "original_value_str": "140,000"
+    },
+    {
+        "name": "Silly Doggy",
+        "value": 42500,
+        "original_value_str": "42,500"
+    },
+    {
+        "name": "Dragonfruit",
+        "value": 40500,
+        "original_value_str": "40,500"
+    },
+    {
+        "name": "Godly Gem",
+        "value": 39000,
+        "original_value_str": "39,000"
+    },
+    {
+        "name": "Easter Basket",
+        "value": 25500,
+        "original_value_str": "25,500"
+    },
+    {
+        "name": "Air Basilisk",
+        "value": 15500,
+        "original_value_str": "15,500"
+    },
+    {
+        "name": "Ice Basilisk",
+        "value": 15500,
+        "original_value_str": "15,500"
+    },
+    {
+        "name": "Fire Basilisk",
+        "value": 15500,
+        "original_value_str": "15,500"
+    },
+    {
+        "name": "Electric Basilisk",
+        "value": 15500,
+        "original_value_str": "15,500"
+    },
+    {
+        "name": "Everblaze",
+        "value": 14000,
+        "original_value_str": "14,000"
+    },
+    {
+        "name": "Giant Chocolate Chicken",
+        "value": 14000,
+        "original_value_str": "14,000"
+    },
+    {
+        "name": "Prophet",
+        "value": 10250,
+        "original_value_str": "10,250"
+    },
+    {
+        "name": "Lord Shock",
+        "value": 6000,
+        "original_value_str": "6,000"
+    },
+    {
+        "name": "Wolflord",
+        "value": 3300,
+        "original_value_str": "3,300"
+    },
+    {
+        "name": "Beelzebub",
+        "value": 3000,
+        "original_value_str": "3,000"
+    },
+    {
+        "name": "Kraken",
+        "value": 2300,
+        "original_value_str": "2,300"
+    },
+    {
+        "name": "Avernus",
+        "value": 2300,
+        "original_value_str": "2,300"
+    },
+    {
+        "name": "Overlord Plushie",
+        "value": 2050,
+        "original_value_str": "2,050"
+    },
+    {
+        "name": "Monolith",
+        "value": 1900,
+        "original_value_str": "1,900"
+    },
+    {
+        "name": "Luminosity",
+        "value": 1900,
+        "original_value_str": "1,900"
+    },
+    {
+        "name": "Queen Kitty",
+        "value": 1800,
+        "original_value_str": "1,800"
+    },
+    {
+        "name": "Royal Trophy",
+        "value": 1800,
+        "original_value_str": "1,800"
+    },
+    {
+        "name": "Elite Soul",
+        "value": 1450,
+        "original_value_str": "1,450"
+    },
+    {
+        "name": "D0ggy1337",
+        "value": 1100,
+        "original_value_str": "1,100"
+    },
+    {
+        "name": "Royal Guardian",
+        "value": 1000,
+        "original_value_str": "1,000"
+    },
+    {
+        "name": "Dowodle",
+        "value": 1000,
+        "original_value_str": "1,000"
+    },
+    {
+        "name": "Chronos",
+        "value": 900,
+        "original_value_str": "900"
+    },
+    {
+        "name": "Hyperwave Kitty",
+        "value": 750,
+        "original_value_str": "750"
+    },
+    {
+        "name": "The Sun",
+        "value": 700,
+        "original_value_str": "700"
+    },
+    {
+        "name": "Elite Challenger",
+        "value": 650,
+        "original_value_str": "650"
+    },
+    {
+        "name": "King Doggy",
+        "value": 600,
+        "original_value_str": "600"
+    },
+    {
+        "name": "Patronus",
+        "value": 580,
+        "original_value_str": "580"
+    },
+    {
+        "name": "ROUND",
+        "value": 500,
+        "original_value_str": "500"
+    },
+    {
+        "name": "Beta TV",
+        "value": 500,
+        "original_value_str": "500"
+    },
+    {
+        "name": "Strawberry Sundae Champion",
+        "value": 425,
+        "original_value_str": "425"
+    },
+    {
+        "name": "Vanilla Sundae Champion",
+        "value": 425,
+        "original_value_str": "425"
+    },
+    {
+        "name": "Mint Sundae Champion",
+        "value": 425,
+        "original_value_str": "425"
+    },
+    {
+        "name": "Chocolate Sundae Champion",
+        "value": 425,
+        "original_value_str": "425"
+    },
+    {
+        "name": "Infernus",
+        "value": 350,
+        "original_value_str": "350"
+    },
+    {
+        "name": "The Moon",
+        "value": 300,
+        "original_value_str": "300"
+    },
+    {
+        "name": "Mech Robot",
+        "value": 300,
+        "original_value_str": "300"
+    },
+    {
+        "name": "Seraph",
+        "value": 300,
+        "original_value_str": "300"
+    },
+    {
+        "name": "Overseer",
+        "value": 275,
+        "original_value_str": "275"
+    },
+    {
+        "name": "Electra Hydra",
+        "value": 250,
+        "original_value_str": "250"
+    },
+    {
+        "name": "The Overlord",
+        "value": 250,
+        "original_value_str": "250"
+    },
+    {
+        "name": "Nebula",
+        "value": 225,
+        "original_value_str": "225"
+    },
+    {
+        "name": "Dark Serpent",
+        "value": 165,
+        "original_value_str": "165"
+    },
+    {
+        "name": "Jackpot",
+        "value": 150,
+        "original_value_str": "150"
+    },
+    {
+        "name": "Enraged Phoenix",
+        "value": 125,
+        "original_value_str": "125"
+    },
+    {
+        "name": "Capybara Plushie",
+        "value": 100,
+        "original_value_str": "100"
+    },
+    {
+        "name": "Vaporium",
+        "value": 100,
+        "original_value_str": "100"
+    },
+    {
+        "name": "Bongo Kitty",
+        "value": 90,
+        "original_value_str": "90"
+    },
+    {
+        "name": "Manarium",
+        "value": 90,
+        "original_value_str": "90"
+    },
+    {
+        "name": "Flying Gem",
+        "value": 80,
+        "original_value_str": "80"
+    },
+    {
+        "name": "Fire Guardian",
+        "value": 50,
+        "original_value_str": "50"
+    },
+    {
+        "name": "Toilet Doggy",
+        "value": 50,
+        "original_value_str": "50"
+    },
+    {
+        "name": "Midas",
+        "value": 50,
+        "original_value_str": "50"
+    },
+    {
+        "name": "Star Charm",
+        "value": 45,
+        "original_value_str": "45"
+    },
+    {
+        "name": "Noctis",
+        "value": 45,
+        "original_value_str": "45"
+    },
+    {
+        "name": "Cardinal Bunny",
+        "value": 45,
+        "original_value_str": "45"
+    },
+    {
+        "name": "Solar Deity",
+        "value": 45,
+        "original_value_str": "45"
+    },
+    {
+        "name": "Chocolate Bunny",
+        "value": 40,
+        "original_value_str": "40"
+    },
+    {
+        "name": "King Soul",
+        "value": 40,
+        "original_value_str": "40"
+    },
+    {
+        "name": "Crescent Empress",
+        "value": 35,
+        "original_value_str": "35"
+    },
+    {
+        "name": "Moonlight",
+        "value": 35,
+        "original_value_str": "35"
+    },
+    {
+        "name": "Ancient One",
+        "value": 35,
+        "original_value_str": "35"
+    },
+    {
+        "name": "Dawn",
+        "value": 30,
+        "original_value_str": "30"
+    },
+    {
+        "name": "Demonic Dogcat",
+        "value": 30,
+        "original_value_str": "30"
+    },
+    {
+        "name": "Holy Egg",
+        "value": 28,
+        "original_value_str": "28"
+    },
+    {
+        "name": "Runic Defender",
+        "value": 25,
+        "original_value_str": "25"
+    },
+    {
+        "name": "Sir Doggyton",
+        "value": 25,
+        "original_value_str": "25"
+    },
+    {
+        "name": "Starlight",
+        "value": 25,
+        "original_value_str": "25"
+    },
+    {
+        "name": "Lunar Deity",
+        "value": 25,
+        "original_value_str": "25"
+    },
+    {
+        "name": "Pineapple Tourist",
+        "value": 20,
+        "original_value_str": "20"
+    },
+    {
+        "name": "NULLVoid",
+        "value": 20,
+        "original_value_str": "20"
+    },
+    {
+        "name": "Kitsune",
+        "value": 20,
+        "original_value_str": "20"
+    },
+    {
+        "name": "King Pufferfish",
+        "value": 20,
+        "original_value_str": "20"
+    },
+    {
+        "name": "Dragon Plushie",
+        "value": 20,
+        "original_value_str": "20"
+    },
+    {
+        "name": "Crimson Bloodmoon",
+        "value": 20,
+        "original_value_str": "20"
+    },
+    {
+        "name": "Sundae Cone",
+        "value": 20,
+        "original_value_str": "20"
+    },
+    {
+        "name": "Trio Cube",
+        "value": 15,
+        "original_value_str": "15"
+    },
+    {
+        "name": "Ophanim",
+        "value": 15,
+        "original_value_str": "15"
+    },
+    {
+        "name": "Umbra",
+        "value": 15,
+        "original_value_str": "15"
+    },
+    {
+        "name": "Magmas",
+        "value": 15,
+        "original_value_str": "15"
+    },
+    {
+        "name": "Dusk",
+        "value": 15,
+        "original_value_str": "15"
+    },
+    {
+        "name": "Corrupt Glitch",
+        "value": 15,
+        "original_value_str": "15"
+    },
+    {
+        "name": "Security System",
+        "value": 15,
+        "original_value_str": "15"
+    },
+    {
+        "name": "Cerberus",
+        "value": 15,
+        "original_value_str": "15"
+    },
+    {
+        "name": "Moon Deer",
+        "value": 10,
+        "original_value_str": "10"
+    },
+    {
+        "name": "Cyborg Phoenix",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Easter Fluffle",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Cave Mole",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Cyber Wolf",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mining Bat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Sleepy Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Game Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Stone Gargoyle",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Starry Lamb",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bionic Shard",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mining Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Robo Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ore Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Crimson Butterfly",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Prismatic",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hell Demon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Demonweb",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Demon Angel",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Emerald Wolf",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Darkness Creature",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Cute Deer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Galaxy Dice",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Water Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Competitor Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dualcorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "DOOF",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Diamond Hexarium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Long Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Parasite",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bronze Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Diamond Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Golden Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Silver Fox",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Golden Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Chance Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bunnnny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Game Master",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Happy Dice",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dice Split",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Fancy Demon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Martian Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Crystal Unicorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Queen of Hearts",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Gamer Boi",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Space Invader",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Fossilus",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Sundae Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Seagull",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Tourist Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Neapolitan Stack",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Runic Prism",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Watermelon Boi",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Glyph Warrior",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Beach Boi",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Fossil Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Captains Curse",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Infernal",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bunny Cone",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Pirate Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Crystal Teddy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Researcher Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Fossil Ghost",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Chest Mimic",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Doggy Pile",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Carrot Pufferfish",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Captain Monkey",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Strawhat Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bug Amber",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Kiwi Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Wind Fairy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Equalizer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Neon Wire Eye",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Neon Wyvern",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Disco Ball",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hologram Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Neon Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ring Master",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ground Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dark Lord",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Monkey",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Rigby",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Rune Guardian",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Runic Master",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Rune Stone",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Popsicle Trio",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Lemon Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Strawberry Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dreamscape",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Soarin Surfer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mangorium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dinosaur",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Lunar Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Emerald Bat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Space Mouse",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Deer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Angel",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Void Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Virus",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Void Bat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Orange Deer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hacker Prism",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Judgement",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Inferno Cube",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Cave Bat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Enlightened Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Lunar Fox",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Manny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Inferno Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Yellow Fox",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hexarium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bunny Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hatchling",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Piggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hell Piggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Panda",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Night Crawler",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ice Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Green Angel",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Wolf",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ruby Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Neon Elemental",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Magma Fox",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dark Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Mouse",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hell Crawler",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Skeletal Deer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bear",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Holy Shock",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Discord Imp",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Abyssal Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Demonic Hydra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Demon Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Inferno Demon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Paper Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ice Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Unicorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Magma Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Manicorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ice Deer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Magma Deer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Sigma Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Moonburst",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Red Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Rainbow Blitz",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Angel Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Evil Shock",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Lunarcorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Flying Pig",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Polar Bear",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ethereal Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Chubby Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Egg Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Easter Egg",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Easter Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Bow Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hell Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dark Bat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Demon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Space Bull",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Sunburst",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Ice Wolf",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Void Demon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Fox",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Rainbow Shock",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Green Hydra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Hell Bat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Flying Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Emerald Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Void Fox",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Seraphic Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Sweet Treat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Paper Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Rainbow Marshmellow",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Dark Phoenix",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Electra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Magma Bear",
+        "value": null,
+        "original_value_str": "N/A"
+    }
+]
