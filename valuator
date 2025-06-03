@@ -1,0 +1,75 @@
+print("------------- VALUE CALCULATOR RUNNING----------------")
+
+-- Roblox services
+local HttpService = game:GetService("HttpService")
+local LocalData = require(game.ReplicatedStorage.Client.Framework.Services.LocalData)
+
+-- URLs for pet value data
+local valueFileURLs = {
+    Normal = "https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Normal_bgsi_pets",
+    Shiny = "https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Shiny_bgsi_pets",
+    Mythic = "https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/Mythic_bgsi_pets",
+    ShinyMythic = "https://raw.githubusercontent.com/Itzboo666/roblox/refs/heads/main/ShinyMythic_bgsi_pets"
+}
+
+print("step 1")
+
+local actualValues = {}
+
+for i,v in pairs(valueFileURLs) do 
+  print("step 1.5")
+  local content = game:HttpGet(v)
+  print("step 1.6")
+  if not content then warn("Content not found for "..i) end 
+  local tab = HttpService:JSONDecode(content)
+  if not tab then warn("Somethings wrong with json in "..i) end 
+  for i,v in pairs(tab) do 
+    name = v.name 
+    value = v.value
+    if not value then print(string.format('Value of %s wasnt found',name)) end
+    local name2 = name:gsub("%s+", "")
+    actualValues[name2] = value
+  end
+end
+print("step 2")
+
+-- Function to get pet data from LocalData
+local function getLocalData()
+    -- This is a direct copy from your script. Ensure LocalData.Get() works as expected.
+    return LocalData.Get()
+end
+
+
+
+local petAmounts = {}
+local total = 0
+
+local pets = getLocalData().Pets
+for i,info in pairs(pets) do
+  local tag = ""
+  local petBaseName = info.Name
+
+  if info.Shiny and info.Mythic then
+      tag = "Shiny Mythic "
+  elseif info.Shiny then
+      tag = "Shiny "
+  elseif info.Mythic then
+      tag = "Mythic "
+  end
+
+  local petFullName = tag .. petBaseName
+  if not petAmounts[petFullName] then
+      petAmounts[petFullName] = 0
+  end 
+  petAmount = info.Amount or 1 
+  petAmounts[petFullName] = petAmounts[petFullName] + petAmount
+  local petFullName2 = petFullName:gsub("%s+", "")
+  if actualValues[petFullName2] then
+  print(string.format("Value of %s was found to be %d", petFullName, actualValues[petFullName2]))
+  else 
+    print(string.format("Value of %s was not found", petFullName))
+  end
+  total = total + (actualValues[petFullName2] or 0)*petAmount
+end
+
+print("Total = "..total)
