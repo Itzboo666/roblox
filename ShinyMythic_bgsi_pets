@@ -1,0 +1,652 @@
+[
+    {
+        "name": "Shiny Mythic Wolflord",
+        "value": null,
+        "original_value_str": "O/C"
+    },
+    {
+        "name": "Shiny Mythic Giant Chocolate Chicken",
+        "value": null,
+        "original_value_str": "O/C"
+    },
+    {
+        "name": "Shiny Mythic Godly Gem",
+        "value": null,
+        "original_value_str": "O/C"
+    },
+    {
+        "name": "Shiny Mythic Royal Trophy",
+        "value": null,
+        "original_value_str": "O/C"
+    },
+    {
+        "name": "Shiny Mythic The Overlord",
+        "value": 17000,
+        "original_value_str": "17,000"
+    },
+    {
+        "name": "Shiny Mythic Manarium",
+        "value": 4500,
+        "original_value_str": "4,500"
+    },
+    {
+        "name": "Shiny Mythic Midas",
+        "value": 2750,
+        "original_value_str": "2,750"
+    },
+    {
+        "name": "Shiny Mythic Cardinal Bunny",
+        "value": 1800,
+        "original_value_str": "1,800"
+    },
+    {
+        "name": "Shiny Mythic Crescent Empress",
+        "value": 1650,
+        "original_value_str": "1,650"
+    },
+    {
+        "name": "Shiny Mythic Moonlight",
+        "value": 1500,
+        "original_value_str": "1,500"
+    },
+    {
+        "name": "Shiny Mythic Holy Egg",
+        "value": 1100,
+        "original_value_str": "1,100"
+    },
+    {
+        "name": "Shiny Mythic King Pufferfish",
+        "value": 1000,
+        "original_value_str": "1,000"
+    },
+    {
+        "name": "Shiny Mythic Corrupt Glitch",
+        "value": 1000,
+        "original_value_str": "1,000"
+    },
+    {
+        "name": "Shiny Mythic Pineapple Tourist",
+        "value": 1000,
+        "original_value_str": "1,000"
+    },
+    {
+        "name": "Shiny Mythic Sundae Cone",
+        "value": 875,
+        "original_value_str": "875"
+    },
+    {
+        "name": "Shiny Mythic Chocolate Bunny",
+        "value": 850,
+        "original_value_str": "850"
+    },
+    {
+        "name": "Shiny Mythic Ophanim",
+        "value": 700,
+        "original_value_str": "700"
+    },
+    {
+        "name": "Shiny Mythic Moon Deer",
+        "value": 700,
+        "original_value_str": "700"
+    },
+    {
+        "name": "Shiny Mythic NULLVoid",
+        "value": 675,
+        "original_value_str": "675"
+    },
+    {
+        "name": "Shiny Mythic Trio Cube",
+        "value": 360,
+        "original_value_str": "360"
+    },
+    {
+        "name": "Shiny Mythic Rainbow Marshmellow",
+        "value": 300,
+        "original_value_str": "300"
+    },
+    {
+        "name": "Shiny Mythic Bionic Shard",
+        "value": 200,
+        "original_value_str": "200"
+    },
+    {
+        "name": "Shiny Mythic Game Master",
+        "value": 175,
+        "original_value_str": "175"
+    },
+    {
+        "name": "Shiny Mythic Rainbow Shock",
+        "value": 150,
+        "original_value_str": "150"
+    },
+    {
+        "name": "Shiny Mythic Chocolate Sundae Champion",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Crimson Bloodmoon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Popsicle Trio",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Dragonfruit",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Overlord Plushie",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Everblaze",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Ancient One",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Monolith",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Rigby",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Kiwi Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Hyperwave Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Star Charm",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Bongo Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Ring Master",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Neon Wyvern",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Neon Wire Eye",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Equalizer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Noctis",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Fire Guardian",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Water Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic The Sun",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Royal Guardian",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Capybara Plushie",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Lord Shock",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Darkness Creature",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Demonweb",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Prismatic",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Crystal Teddy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Avernus",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Sunburst",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Inferno Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Kraken",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Bug Amber",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Air Basilisk",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Ice Basilisk",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Captain Monkey",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Carrot Pufferfish",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Fire Basilisk",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Chest Mimic",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Fossil Ghost",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Mint Sundae Champion",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Fossilus",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Infernal",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Captains Curse",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Electric Basilisk",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Glyph Warrior",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Strawberry Sundae Champion",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Vanilla Sundae Champion",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Runic Defender",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Beelzebub",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Mangorium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Soarin Surfer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Dreamscape",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Sweet Treat",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Patronus",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Dementor",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Dualcorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Easter Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Seraphic Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Demonic Hydra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic MAN FACE GOD",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Abyssal Dragon",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic King Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Seraph",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Sigma Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Virus",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Unicorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic ROUND",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Flying Pig",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Easter Basket",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Ethereal Bunny",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Electra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Dark Phoenix",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Lunar Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Green Hydra",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Moonburst",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Neon Elemental",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Emerald Golem",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Inferno Cube",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Hexarium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Dragon Plushie",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic D0ggy1337",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Prophet",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Queen Kitty",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Sir Doggyton",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Crimson Butterfly",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Toilet Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Elite Soul",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Magmas",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Jackpot",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Dice Split",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Crystal Unicorn",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Luminosity",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Hacker Prism",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Space Invader",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Mech Robot",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Nebula",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Cyborg Phoenix",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Stone Gargoyle",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Silly Doggy",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Diamond Serpent",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Parasite",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Starlight",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Overseer",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic Diamond Hexarium",
+        "value": null,
+        "original_value_str": "N/A"
+    },
+    {
+        "name": "Shiny Mythic DOOF",
+        "value": null,
+        "original_value_str": "N/A"
+    }
+]
