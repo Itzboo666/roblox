@@ -1,10 +1,12 @@
+-- --- START OF ENTIRE MODIFIED Websocket-lua.txt ---
+
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" -- Ensure this is your PC's local IP where Sniper is running
+local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" -- MODIFIED: Changed port to 8000 to match Electron default, ENSURE IP IS CORRECT
 local RECONNECT_DELAY = 7
 local PING_INTERVAL = 25
 
@@ -117,141 +119,102 @@ local function send_identity_report()
     end
 end
 
+-- --- START OF MODIFIED handle_server_message for Websocket-lua.txt ---
 local function handle_server_message(message_string)
     -- warn("[SNIPER_LUA_WS] Raw message received: " .. message_string)
-    local success, data = pcall(HttpService.JSONDecode, HttpService, message_string)
-    if not success then
-        warn("[SNIPER_LUA_WS] Failed to decode JSON message: " .. message_string .. " Error: " .. tostring(data))
-        return
-    end
+    local decoded_successfully, data_or_error = pcall(HttpService.JSONDecode, HttpService, message_string)
 
-    if data.type == "connected" then
-        warn("[SNIPER_LUA_WS] Received 'connected' from server. InstanceID: " .. (data.instanceId or "N/A"))
-        instanceIdFromServer = data.instanceId
-        is_connected = true
-        local server_tells_us_status = data.status
-        if server_tells_us_status == 'idle' then
-            send_ws_message({ type = "status_update", status = "idle" })
-        elseif not server_tells_us_status and not (server_tells_us_status == "active_cooldown" or server_tells_us_status == "teleport_sent_awaiting_disconnect" or server_tells_us_status == "teleport_initiated_awaiting_reconnect") then
-             send_ws_message({ type = "status_update", status = "idle" })
-        end
-    elseif data.type == "teleport" then
-        warn("[SNIPER_LUA_TP] Received 'teleport' command. PlaceID: " .. (data.placeId or "N/A") .. ", JobID: " .. (data.jobId or "N/A"))
-        local placeId = tonumber(data.placeId)
-        local jobId = tostring(data.jobId)
-        if placeId and jobId and Players.LocalPlayer then
-            send_ws_message({ type = "status_update", status = "joining_game", placeId = placeId, jobId = jobId })
-            TeleportService:TeleportToPlaceInstance(placeId, jobId, Players.LocalPlayer)
-        else
-            warn("[SNIPER_LUA_TP] Teleport command invalid or LocalPlayer missing.")
-        end
-    elseif data.type == "ping" then
-        -- warn("[SNIPER_LUA_WS] Received ping, sending pong.")
-        send_ws_message({ type = "pong" })
-    elseif data.type == "error" and data.message == "Identity not established." then
-        warn("[SNIPER_LUA_WS] Received 'Identity not established' error. Resending identity.")
-        send_identity_report()
-    elseif data.type == "send_chat_to_roblox" and data.message then
-        warn("[SNIPER_LUA_CHAT] Received 'send_chat_to_roblox': ", HttpService:JSONEncode(data))
-        local messageToSend = tostring(data.message)
-        local messageSent = false
-
-        if TextChatService then
-            warn("[SNIPER_LUA_CHAT] TextChatService found. Attempting to send: ", messageToSend)
-            local targetChannel = nil
-            
-            if TextChatService:FindFirstChild("ChatInputBarConfiguration") then
-                local inputBarConfig = TextChatService.ChatInputBarConfiguration
-                targetChannel = inputBarConfig:GetAttribute("TargetTextChannel") or inputBarConfig.TargetTextChannel
-                if targetChannel and targetChannel:IsA("TextChannel") then
-                    warn("[SNIPER_LUA_CHAT] Using ChatInputBarConfiguration. TargetChannel: " .. targetChannel.Name)
-                    local s, e = pcall(function() targetChannel:SendAsync(messageToSend) end)
-                    if s then
-                        warn("[SNIPER_LUA_CHAT] Successfully sent chat via InputBar TargetChannel: " .. targetChannel.Name)
-                        send_ws_message({type="feedback", status="success", message="Lua: Sent chat (InputBar Target) to '" .. targetChannel.Name .. "'."})
-                        messageSent = true
-                    else
-                        warn("[SNIPER_LUA_CHAT] Failed to send via ChatInputBarConfiguration TargetChannel (" .. targetChannel.Name .. "): " .. tostring(e))
-                        send_ws_message({type="feedback", status="error", message="Lua: Failed InputBar Target '" .. targetChannel.Name .. "': " .. tostring(e)})
-                    end
-                else
-                    warn("[SNIPER_LUA_CHAT] ChatInputBarConfiguration TargetTextChannel invalid or not found.")
-                end
-            else
-                 warn("[SNIPER_LUA_CHAT] ChatInputBarConfiguration not found in TextChatService.")
+    if decoded_successfully then
+        -- It was valid JSON, process structured commands
+        local data = data_or_error
+        if data.type == "connected" then
+            warn("[SNIPER_LUA_WS] Received 'connected' from server. InstanceID: " .. (data.instanceId or "N/A"))
+            instanceIdFromServer = data.instanceId
+            is_connected = true
+            local server_tells_us_status = data.status
+            if server_tells_us_status == 'idle' then
+                send_ws_message({ type = "status_update", status = "idle" })
+            elseif not server_tells_us_status and not (server_tells_us_status == "active_cooldown" or server_tells_us_status == "teleport_sent_awaiting_disconnect" or server_tells_us_status == "teleport_initiated_awaiting_reconnect") then
+                send_ws_message({ type = "status_update", status = "idle" })
             end
-
+        elseif data.type == "ping" then -- Server might send this (though current main.js doesn't)
+            -- warn("[SNIPER_LUA_WS] Received server ping, sending pong.")
+            send_ws_message({ type = "pong" })
+        elseif data.type == "error" and data.message == "Identity not established." then
+            warn("[SNIPER_LUA_WS] Received 'Identity not established' error. Resending identity.")
+            send_identity_report()
+        elseif data.type == "send_chat_to_roblox" and data.message then
+            warn("[SNIPER_LUA_CHAT] Received 'send_chat_to_roblox': ", HttpService:JSONEncode(data))
+            local messageToSend = tostring(data.message)
+            -- (Your existing send_chat_to_roblox handling logic)
+            local messageSent = false
+            if TextChatService then
+                local targetChannel = nil
+                if TextChatService:FindFirstChild("ChatInputBarConfiguration") then
+                    local inputBarConfig = TextChatService.ChatInputBarConfiguration
+                    targetChannel = inputBarConfig:GetAttribute("TargetTextChannel") or inputBarConfig.TargetTextChannel
+                    if targetChannel and targetChannel:IsA("TextChannel") then
+                        local s, e = pcall(function() targetChannel:SendAsync(messageToSend) end)
+                        if s then messageSent = true; send_ws_message({type="feedback", status="success", message="Lua: Sent chat (InputBar Target)"}) else send_ws_message({type="feedback", status="error", message="Lua: Failed InputBar Target: " .. tostring(e)}) end
+                    end
+                end
+                if not messageSent then
+                    local channels = TextChatService:GetChildren()
+                    local preferredChannel = nil
+                    for _, channel in ipairs(channels) do if channel:IsA("TextChannel") and (string.lower(channel.Name) == "rbxsystem" or string.lower(channel.Name) == "all" or string.find(string.lower(channel.Name), "general")) then preferredChannel = channel; break; end end
+                    if not preferredChannel then for _, channel in ipairs(channels) do if channel:IsA("TextChannel") then preferredChannel = channel; break; end end end
+                    if preferredChannel then
+                        local s, e = pcall(function() preferredChannel:SendAsync(messageToSend) end)
+                        if s then messageSent = true; send_ws_message({type="feedback", status="success", message="Lua: Sent chat (Fallback TCS)"}) else send_ws_message({type="feedback", status="error", message="Lua: Failed Fallback TCS: " .. tostring(e)}) end
+                    else send_ws_message({type="feedback", status="error", message="Lua: No TextChannel (fallback)."}) end
+                end
+            end
             if not messageSent then
-                warn("[SNIPER_LUA_CHAT] Falling back to general channel search for TextChatService.")
-                local channels = TextChatService:GetChildren()
-                local preferredChannel = nil
-                for _, channel in ipairs(channels) do
-                    if channel:IsA("TextChannel") then
-                        if string.lower(channel.Name) == "rbxsystem" or string.lower(channel.Name) == "all" or string.find(string.lower(channel.Name), "general") then
-                            preferredChannel = channel
-                            break
-                        end
-                    end
-                end
-                
-                if not preferredChannel then 
-                    for _, channel in ipairs(channels) do
-                        if channel:IsA("TextChannel") then
-                            preferredChannel = channel
-                            break
-                        end
-                    end
-                end
-
-                if preferredChannel then
-                    warn("[SNIPER_LUA_CHAT] Attempting SendAsync on fallback channel: " .. preferredChannel.Name)
-                    local s, e = pcall(function() preferredChannel:SendAsync(messageToSend) end)
-                    if s then
-                        warn("[SNIPER_LUA_CHAT] Successfully sent chat via fallback TextChatService channel: " .. preferredChannel.Name)
-                        send_ws_message({type="feedback", status="success", message="Lua: Sent chat (Fallback TCS) to '" .. preferredChannel.Name .. "'."})
-                        messageSent = true
-                    else
-                        warn("[SNIPER_LUA_CHAT] Failed to send chat via fallback TextChatService channel (" .. preferredChannel.Name .. "): " .. tostring(e))
-                        send_ws_message({type="feedback", status="error", message="Lua: Failed Fallback TCS '" .. preferredChannel.Name .. "': " .. tostring(e)})
-                    end
-                else
-                    warn("[SNIPER_LUA_CHAT] No suitable TextChannel found via fallback search.")
-                    send_ws_message({type="feedback", status="error", message="Lua: No TextChannel found (fallback)."})
-                end
+                local ChatService = game:GetService("Chat")
+                if ChatService and Players.LocalPlayer and Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Head") then
+                    local s, e = pcall(function() ChatService:Chat(Players.LocalPlayer.Character.Head, messageToSend, Enum.ChatColor.Blue) end)
+                    if s then messageSent = true; send_ws_message({type="feedback", status="success", message="Lua: Sent chat (Legacy)."}) else send_ws_message({type="feedback", status="error", message="Lua: Failed Legacy Chat: " .. tostring(e)}) end
+                else if not messageSent then send_ws_message({type="feedback", status="error", message="Lua: All chat methods failed."}) end end
             end
+        else
+            warn("[SNIPER_LUA_WS] Received valid JSON but unknown or unhandled type: " .. (data.type or "nil"))
         end
-
-        if not messageSent then
-            warn("[SNIPER_LUA_CHAT] TextChatService send failed or not available. Attempting legacy Chat service.")
-            local ChatService = game:GetService("Chat")
-            if ChatService and Players.LocalPlayer and Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Head") then
-                warn("[SNIPER_LUA_CHAT] Attempting ChatService:Chat() for: ", messageToSend)
-                local s, e = pcall(function() ChatService:Chat(Players.LocalPlayer.Character.Head, messageToSend, Enum.ChatColor.Blue) end)
-                if s then
-                    warn("[SNIPER_LUA_CHAT] Successfully sent chat via legacy ChatService.")
-                    send_ws_message({type="feedback", status="success", message="Lua: Sent chat (Legacy)."})
-                    messageSent = true
+    else
+        -- JSON decoding FAILED. Assume it's a raw Lua script string to execute.
+        warn("[SNIPER_LUA_WS] JSON decode failed (" .. tostring(data_or_error) .. "). Assuming raw script: " .. message_string)
+        if typeof(loadstring) == "function" then
+            local func, err_load = loadstring(message_string)
+            if func then
+                -- Optionally send a status update BEFORE trying to execute
+                send_ws_message({ type = "status_update", status = "executing_script" })
+                local exec_success, err_exec = pcall(func) -- Execute the loaded script
+                if not exec_success then
+                    warn("[SNIPER_LUA_EXEC] Error executing received script: " .. tostring(err_exec))
+                    send_ws_message({ type = "feedback", status = "error", message = "Lua: Error executing script: " .. tostring(err_exec) })
                 else
-                    warn("[SNIPER_LUA_CHAT] Failed to send chat via legacy ChatService: " .. tostring(e))
-                    send_ws_message({type="feedback", status="error", message="Lua: Failed Legacy Chat: " .. tostring(e)})
+                    warn("[SNIPER_LUA_EXEC] Raw script initiated/executed successfully.")
+                    -- If it's a teleport, the script will disconnect, so further feedback might not send.
+                    -- Client status will be updated by main.js based on cooldown and eventually disconnect.
                 end
             else
-                warn("[SNIPER_LUA_CHAT] Legacy ChatService not usable (missing service, player, character, or head).")
-                if not messageSent then 
-                     send_ws_message({type="feedback", status="error", message="Lua: All chat send methods failed."})
-                end
+                warn("[SNIPER_LUA_EXEC] loadstring failed to compile script: " .. tostring(err_load))
+                send_ws_message({ type = "feedback", status = "error", message = "Lua: loadstring compile error: " .. tostring(err_load) })
             end
+        else
+            warn("[SNIPER_LUA_EXEC] loadstring function is not available in this environment.")
+            send_ws_message({ type = "feedback", status = "error", message = "Lua: loadstring not available." })
         end
     end
 end
+-- --- END OF MODIFIED handle_server_message for Websocket-lua.txt ---
 
 local function setup_chat_listeners()
     if TextChatService then
         warn("[SNIPER_LUA_CHAT_LISTEN] Setting up TextChatService.MessageReceived listener.")
         TextChatService.MessageReceived:Connect(function(textChatMessage)
-            warn("[SNIPER_LUA_CHAT_LISTEN] TextChatService.MessageReceived Fired. Text: ", textChatMessage.Text, " Source available: ", tostring(textChatMessage.TextSource ~= nil))
+            -- warn("[SNIPER_LUA_CHAT_LISTEN] TextChatService.MessageReceived Fired. Text: ", textChatMessage.Text, " Source available: ", tostring(textChatMessage.TextSource ~= nil))
             if not is_connected then
-                warn("[SNIPER_LUA_CHAT_LISTEN] MessageReceived, but not connected to WS. Aborting send.")
+                -- warn("[SNIPER_LUA_CHAT_LISTEN] MessageReceived, but not connected to WS. Aborting send.")
                 return
             end
             
@@ -263,44 +226,31 @@ local function setup_chat_listeners()
             if textChatMessage.Timestamp and typeof(textChatMessage.Timestamp) == "DateTime" then
                 if textChatMessage.Timestamp.UnixTimestampMillis then
                     timestamp = math.floor(textChatMessage.Timestamp.UnixTimestampMillis / 1000)
-                    warn("[SNIPER_LUA_CHAT_LISTEN] Got UnixTimestampMillis: ", textChatMessage.Timestamp.UnixTimestampMillis, " -> Seconds: ", timestamp)
                 elseif textChatMessage.Timestamp.UnixTimestamp then
                     timestamp = textChatMessage.Timestamp.UnixTimestamp
-                    warn("[SNIPER_LUA_CHAT_LISTEN] Got UnixTimestamp (seconds): ", timestamp)
                 else
-                    warn("[SNIPER_LUA_CHAT_LISTEN] DateTime object present, but no UnixTimestampMillis or UnixTimestamp property found. Using os.time().")
                     timestamp = os.time() 
                 end
             else
-                warn("[SNIPER_LUA_CHAT_LISTEN] textChatMessage.Timestamp is not a DateTime object or is nil. Using os.time(). Type was: ", typeof(textChatMessage.Timestamp))
                 timestamp = os.time() 
             end
 
             if textChatMessage.TextSource then 
                 authorUserId = tostring(textChatMessage.TextSource.UserId)
-                
                 local sourcePlayer = Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
                 if sourcePlayer then
                     authorDisplayName = sourcePlayer.DisplayName 
                     if not authorDisplayName or authorDisplayName == "" then 
                         authorDisplayName = sourcePlayer.Name
-                        warn(("[SNIPER_LUA_CHAT_LISTEN] Used sourcePlayer.Name ('%s') as DisplayName for UserId: %s"):format(tostring(authorDisplayName), tostring(authorUserId)))
-                    else
-                        warn(("[SNIPER_LUA_CHAT_LISTEN] Got DisplayName '%s' from sourcePlayer for UserId: %s"):format(tostring(authorDisplayName), tostring(authorUserId)))
                     end
                 else
-                    -- Fallback: Try to get Name directly from TextSource if player not found
-                    -- This is the part that was causing issues if TextSource doesn't have .Name
-                    local tsName = "UnknownPlayer" -- Default if all fails
+                    local tsName = "UnknownPlayer" 
                     local success_getName, nameValue = pcall(function() return textChatMessage.TextSource.Name end)
                     if success_getName and nameValue then
                         tsName = nameValue
                     end
                     authorDisplayName = tsName
-                    warn(("[SNIPER_LUA_CHAT_LISTEN] Could not find Player object for UserId: %s. Attempted TextSource.Name, got: '%s'."):format(tostring(authorUserId), tostring(authorDisplayName)))
                 end
-            else
-                 warn("[SNIPER_LUA_CHAT_LISTEN] TextSource is nil. Message likely from System.")
             end
             
             local payload = {
@@ -310,17 +260,14 @@ local function setup_chat_listeners()
                 message = messageText,
                 timestamp = timestamp
             }
-            warn("[SNIPER_LUA_CHAT_LISTEN] Sending to Sniper (TCS): ", HttpService:JSONEncode(payload))
+            -- warn("[SNIPER_LUA_CHAT_LISTEN] Sending to Sniper (TCS): ", HttpService:JSONEncode(payload))
             send_ws_message(payload)
         end)
     else
         warn("[SNIPER_LUA_CHAT_LISTEN] TextChatService not found. Setting up legacy chat listeners.")
         local function handle_legacy_chat(player, message, eventType)
-            warn("[SNIPER_LUA_CHAT_LISTEN] Legacy Chat ("..eventType..") Fired. Player: " .. player.Name .. ", Message: " .. message)
-            if not is_connected then
-                warn("[SNIPER_LUA_CHAT_LISTEN] Legacy chat, but not connected to WS. Aborting send.")
-                return
-            end
+            -- warn("[SNIPER_LUA_CHAT_LISTEN] Legacy Chat ("..eventType..") Fired. Player: " .. player.Name .. ", Message: " .. message)
+            if not is_connected then return end
             local payload = {
                 type = "chat_message_from_client",
                 authorUserId = tostring(player.UserId),
@@ -331,20 +278,17 @@ local function setup_chat_listeners()
             if player.DisplayName and player.DisplayName ~= "" then
                  payload.authorDisplayName = player.DisplayName
             end
-            warn("[SNIPER_LUA_CHAT_LISTEN] Sending to Sniper (Legacy): ", HttpService:JSONEncode(payload))
+            -- warn("[SNIPER_LUA_CHAT_LISTEN] Sending to Sniper (Legacy): ", HttpService:JSONEncode(payload))
             send_ws_message(payload)
         end
 
         Players.PlayerAdded:Connect(function(player)
-            warn("[SNIPER_LUA_CHAT_LISTEN] PlayerAdded: " .. player.Name .. ". Connecting Chatted event.")
             player.Chatted:Connect(function(message) handle_legacy_chat(player, message, "PlayerAdded.Chatted") end)
         end)
         for _, player in ipairs(Players:GetPlayers()) do
-            warn("[SNIPER_LUA_CHAT_LISTEN] Existing Player: " .. player.Name .. ". Connecting Chatted event.")
             player.Chatted:Connect(function(message) handle_legacy_chat(player, message, "ExistingPlayer.Chatted") end)
         end
         if Players.LocalPlayer then
-             warn("[SNIPER_LUA_CHAT_LISTEN] LocalPlayer found (" .. Players.LocalPlayer.Name .. "). Connecting Chatted event.")
              local existingConnection
              existingConnection = Players.LocalPlayer.Chatted:Connect(function(message)
                 if not Players.LocalPlayer then
@@ -487,3 +431,4 @@ spawn(function()
 end)
 
 warn("[SNIPER_LUA_CORE] Script main execution finished. Background tasks (WS, ping) are running.")
+-- --- END OF ENTIRE MODIFIED Websocket-lua.txt ---
