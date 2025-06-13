@@ -6,8 +6,8 @@ local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local WEBSOCKET_SERVER_URL = "ws://2.tcp.eu.ngrok.io:12321" 
-local RECONNECT_DELAY = 7
+local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" 
+local RECONNECT_DELAY = 5
 local PING_INTERVAL = 25
 
 local ws_client
