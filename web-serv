@@ -1,4 +1,4 @@
--- --- START OF ENTIRE Websocket-lua.txt (with setfenv and TeleportInitFailed for Error 772) ---
+-- --- START OF Lua Script (Based on YOUR working script, with TeleportInitFailed ADDED) ---
 
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" -- ENSURE IP AND PORT ARE CORRECT (8000 is Electron default)
+local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" -- YOUR WORKING URL
 local RECONNECT_DELAY = 7
 local PING_INTERVAL = 25
 
@@ -15,9 +15,9 @@ local instanceIdFromServer = nil
 local is_connected = false
 local last_ping_sent = 0
 local connection_attempt_active = false
-local current_teleport_job_id = nil -- To track the job ID we are trying to join
+local current_teleport_job_id = nil -- ADDED: To track the job ID for TeleportInitFailed
 
--- _try_attach_event function (standard helper)
+-- _try_attach_event function (FROM YOUR WORKING SCRIPT)
 local function _try_attach_event(client, event_config, callback)
     local s_access, prop, s_connect_access, connect_fn, s_call, err_call
     s_access, prop = pcall(function() return client[event_config.PascalEvent] end)
@@ -58,202 +58,99 @@ local function _try_attach_event(client, event_config, callback)
     return false
 end
 
--- _try_send_message function (standard helper)
+-- _try_send_message function (FROM YOUR WORKING SCRIPT)
 local function _try_send_message(client, data_string)
-    local success, err_msg, method_name
-    method_name = "client:send()"
-    success, err_msg = pcall(function() client:send(data_string) end)
-    if success then return true, method_name end
-    method_name = "client.send()"
-    success, err_msg = pcall(function() client.send(data_string) end)
-    if success then return true, method_name end
-    method_name = "client:Send()"
-    success, err_msg = pcall(function() client:Send(data_string) end)
-    if success then return true, method_name end
-    method_name = "client.Send()"
-    success, err_msg = pcall(function() client.Send(data_string) end)
-    if success then return true, method_name end
-    return false, err_msg 
+    local success, err_msg, method_name; method_name = "client:send()"; success, err_msg = pcall(function() client:send(data_string) end); if success then return true, method_name end; method_name = "client.send()"; success, err_msg = pcall(function() client.send(data_string) end); if success then return true, method_name end; method_name = "client:Send()"; success, err_msg = pcall(function() client:Send(data_string) end); if success then return true, method_name end; method_name = "client.Send()"; success, err_msg = pcall(function() client.Send(data_string) end); if success then return true, method_name end; return false, err_msg 
 end
 
--- send_ws_message function (standard helper)
+-- send_ws_message function (FROM YOUR WORKING SCRIPT)
 local function send_ws_message(data_table)
-    if not (ws_client and (is_connected or data_table.type == "identity_report")) then
-        if not (data_table.type == "identity_report" and ws_client) then
-            -- warn("[SNIPER_LUA_WS] Not sending message: WS client not ready or not connected. Type: " .. (data_table.type or "N/A"))
-            return
-        end
-    end
-    local success_json, json_data = pcall(HttpService.JSONEncode, HttpService, data_table)
-    if not success_json or not ws_client then
-        if not success_json then warn("[SNIPER_LUA_WS] JSONEncode failed: " .. tostring(json_data)) end
-        if not ws_client then warn("[SNIPER_LUA_WS] WS client is nil, cannot send.") end
-        return
-    end
-    local sent, method_or_error = _try_send_message(ws_client, json_data)
-    if not sent then
-        warn("[SNIPER_LUA_WS] All WebSocket send methods failed. Last error: " .. tostring(method_or_error))
-    end
+    if not (ws_client and (is_connected or data_table.type == "identity_report")) then if not (data_table.type == "identity_report" and ws_client) then return end end; local s_json, json_d = pcall(HttpService.JSONEncode, HttpService, data_table); if not s_json or not ws_client then if not s_json then warn("[LUA_WS] JSONEncode fail: " .. tostring(json_d)) end; if not ws_client then warn("[LUA_WS] WS client nil") end; return end; local sent, m_or_e = _try_send_message(ws_client, json_d); if not sent then warn("[LUA_WS] Send fail: " .. tostring(m_or_e)) end
 end
 
--- send_identity_report function (standard helper)
+-- send_identity_report function (FROM YOUR WORKING SCRIPT)
 local function send_identity_report()
-    if not Players.LocalPlayer then
-        warn("[SNIPER_LUA_ID] LocalPlayer not available for identity report. Will retry.")
-        task.wait(1)
-        if not Players.LocalPlayer then
-            warn("[SNIPER_LUA_ID] LocalPlayer still not available after retry.")
-            return
-        end
-    end
-    local userId = Players.LocalPlayer.UserId
-    local userName = Players.LocalPlayer.Name
-    if userId and userName then
-        -- warn("[SNIPER_LUA_ID] Sending identity report for UserID: " .. userId .. ", UserName: " .. userName)
-        send_ws_message({
-            type = "identity_report",
-            userId = tostring(userId),
-            userName = userName
-        })
-    else
-        warn("[SNIPER_LUA_ID] Could not send identity report: UserId or UserName missing.")
-    end
+    if not Players.LocalPlayer then task.wait(1); if not Players.LocalPlayer then warn("[LUA_ID] LocalPlayer N/A"); return end end; local uid = Players.LocalPlayer.UserId; local uname = Players.LocalPlayer.Name; if uid and uname then send_ws_message({ type = "identity_report", userId = tostring(uid), userName = uname }) else warn("[LUA_ID] UID/UName missing") end
 end
 
--- MODIFIED handle_server_message (with setfenv for loadstring)
+-- handle_server_message function (FROM YOUR WORKING SCRIPT, with job ID tracking for teleport scripts)
 local function handle_server_message(message_string)
     local decoded_successfully, data_or_error = pcall(HttpService.JSONDecode, HttpService, message_string)
-
     if decoded_successfully then
         local data = data_or_error
         if data.type == "connected" then
-            warn("[SNIPER_LUA_WS] Received 'connected' from server. InstanceID: " .. (data.instanceId or "N/A"))
-            instanceIdFromServer = data.instanceId
-            is_connected = true
-            local server_tells_us_status = data.status
-            if server_tells_us_status == 'idle' then
-                send_ws_message({ type = "status_update", status = "idle" })
-            elseif not server_tells_us_status and not (server_tells_us_status == "active_cooldown" or server_tells_us_status == "teleport_sent_awaiting_disconnect" or server_tells_us_status == "teleport_initiated_awaiting_reconnect") then
+            warn("[SNIPER_LUA_WS] Connected. InstanceID: " .. (data.instanceId or "N/A"))
+            instanceIdFromServer = data.instanceId; is_connected = true
+            if data.status == 'idle' or (not data.status and not (data.status == "active_cooldown" or data.status == "teleport_sent_awaiting_disconnect" or data.status == "teleport_initiated_awaiting_reconnect")) then
                 send_ws_message({ type = "status_update", status = "idle" })
             end
-        elseif data.type == "ping" then
-            send_ws_message({ type = "pong" })
-        elseif data.type == "error" and data.message == "Identity not established." then
-            warn("[SNIPER_LUA_WS] Received 'Identity not established' error. Resending identity.")
-            send_identity_report()
+        elseif data.type == "ping" then send_ws_message({ type = "pong" })
+        elseif data.type == "error" and data.message == "Identity not established." then warn("[SNIPER_LUA_WS] Identity error. Resending."); send_identity_report()
         elseif data.type == "send_chat_to_roblox" and data.message then
-            warn("[SNIPER_LUA_CHAT] Received 'send_chat_to_roblox': ", HttpService:JSONEncode(data))
-            local messageToSend = tostring(data.message)
-            local messageSent = false
+            warn("[SNIPER_LUA_CHAT] Received command to send chat: ", data.message)
+            local msgToSend = tostring(data.message); local msgSent = false
             if TextChatService then
-                local targetChannel = nil
-                if TextChatService:FindFirstChild("ChatInputBarConfiguration") then
-                    local inputBarConfig = TextChatService.ChatInputBarConfiguration
-                    targetChannel = inputBarConfig:GetAttribute("TargetTextChannel") or inputBarConfig.TargetTextChannel
-                    if targetChannel and targetChannel:IsA("TextChannel") then
-                        local s, e = pcall(function() targetChannel:SendAsync(messageToSend) end)
-                        if s then messageSent = true; send_ws_message({type="feedback", status="success", message="Lua: Sent chat (InputBar Target)"}) else send_ws_message({type="feedback", status="error", message="Lua: Failed InputBar Target: " .. tostring(e)}) end
-                    end
-                end
-                if not messageSent then
-                    local channels = TextChatService:GetChildren()
-                    local preferredChannel = nil
-                    for _, channel in ipairs(channels) do if channel:IsA("TextChannel") and (string.lower(channel.Name) == "rbxsystem" or string.lower(channel.Name) == "all" or string.find(string.lower(channel.Name), "general")) then preferredChannel = channel; break; end end
-                    if not preferredChannel then for _, channel in ipairs(channels) do if channel:IsA("TextChannel") then preferredChannel = channel; break; end end end
-                    if preferredChannel then
-                        local s, e = pcall(function() preferredChannel:SendAsync(messageToSend) end)
-                        if s then messageSent = true; send_ws_message({type="feedback", status="success", message="Lua: Sent chat (Fallback TCS)"}) else send_ws_message({type="feedback", status="error", message="Lua: Failed Fallback TCS: " .. tostring(e)}) end
-                    else send_ws_message({type="feedback", status="error", message="Lua: No TextChannel (fallback)."}) end
-                end
+                local tc=nil; if TextChatService:FindFirstChild("ChatInputBarConfiguration") then local ic=TextChatService.ChatInputBarConfiguration; tc=ic:GetAttribute("TargetTextChannel") or ic.TargetTextChannel end
+                if tc and tc:IsA("TextChannel") then local s,e=pcall(function()tc:SendAsync(msgToSend)end); if s then msgSent=true;send_ws_message({type="feedback",status="success",message="Lua: Chat (InputBar)"})else send_ws_message({type="feedback",status="error",message="Lua:Fail InputBar:"..tostring(e)})end end
+                if not msgSent then local chs=TextChatService:GetChildren();local pCh=nil;for _,ch in ipairs(chs)do if ch:IsA("TextChannel")and(string.lower(ch.Name)=="rbxsystem"or string.lower(ch.Name)=="all"or string.find(string.lower(ch.Name),"general"))then pCh=ch;break end end;if not pCh then for _,ch in ipairs(chs)do if ch:IsA("TextChannel")then pCh=ch;break end end end;if pCh then local s,e=pcall(function()pCh:SendAsync(msgToSend)end);if s then msgSent=true;send_ws_message({type="feedback",status="success",message="Lua:Chat(FallbackTCS)"})else send_ws_message({type="feedback",status="error",message="Lua:Fail FallbackTCS:"..tostring(e)})end else send_ws_message({type="feedback",status="error",message="Lua:No TextChannel"})end end
             end
-            if not messageSent then
-                local ChatService = game:GetService("Chat")
-                if ChatService and Players.LocalPlayer and Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Head") then
-                    local s, e = pcall(function() ChatService:Chat(Players.LocalPlayer.Character.Head, messageToSend, Enum.ChatColor.Blue) end)
-                    if s then messageSent = true; send_ws_message({type="feedback", status="success", message="Lua: Sent chat (Legacy)."}) else send_ws_message({type="feedback", status="error", message="Lua: Failed Legacy Chat: " .. tostring(e)}) end
-                else if not messageSent then send_ws_message({type="feedback", status="error", message="Lua: All chat methods failed."}) end end
-            end
-        else
-            warn("[SNIPER_LUA_WS] Received valid JSON but unknown or unhandled type: " .. (data.type or "nil"))
-        end
+            if not msgSent then local CS=game:GetService("Chat"); if CS and Players.LocalPlayer and Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("Head")then local s,e=pcall(function()CS:Chat(Players.LocalPlayer.Character.Head,msgToSend,Enum.ChatColor.Blue)end);if s then msgSent=true;send_ws_message({type="feedback",status="success",message="Lua:Chat(Legacy)"})else send_ws_message({type="feedback",status="error",message="Lua:Fail Legacy:"..tostring(e)})end else if not msgSent then send_ws_message({type="feedback",status="error",message="Lua:All chat fail"})end end end
+        else warn("[SNIPER_LUA_WS] Unknown JSON type: " .. (data.type or "nil")) end
     else
-        -- JSON decoding FAILED. Assume it's a raw Lua script string to execute.
-        warn("[SNIPER_LUA_WS] JSON decode failed (" .. tostring(data_or_error) .. "). Assuming raw script: " .. message_string)
+        warn("[SNIPER_LUA_WS] JSON decode failed. Assuming raw script: " .. message_string:sub(1,100) .. "...")
         if typeof(loadstring) == "function" then
             local func, err_load = loadstring(message_string)
             if func then
-                -- Set the environment for the loaded function
-                local chunkEnv = getfenv(func) 
-                if chunkEnv then
-                    chunkEnv.game = game 
-                    chunkEnv.print = print 
-                    chunkEnv.warn = warn   
-                    chunkEnv.GetService = function(serviceName) return game:GetService(serviceName) end
-                    chunkEnv.TeleportService = TeleportService 
-                    chunkEnv.Players = Players
-                    -- Add other necessary globals if the script string needs them
-                else
-                    warn("[SNIPER_LUA_EXEC] Could not get environment of loaded function.")
-                end
-                setfenv(func, chunkEnv) -- Apply the environment
-
+                -- ADDED: Try to extract JobID from the script string for TeleportInitFailed tracking
                 local match_job_id = string.match(message_string, 'TeleportToPlaceInstance%s*%(%s*%d+%s*,%s*["%'](.-)["%']%s*%)')
                 if match_job_id then
                     current_teleport_job_id = match_job_id
                     warn("[SNIPER_LUA_EXEC] Identified teleport script for JobID: " .. current_teleport_job_id)
                 else
-                    current_teleport_job_id = nil 
+                    current_teleport_job_id = nil -- Reset if not a recognized teleport script
                 end
-
                 send_ws_message({ type = "status_update", status = "executing_script", jobId = current_teleport_job_id or "N/A" })
-                
-                local exec_success, err_exec = pcall(func) 
+                local exec_success, err_exec = pcall(func)
                 if not exec_success then
-                    warn("[SNIPER_LUA_EXEC] Error executing received script: " .. tostring(err_exec))
-                    send_ws_message({ type = "feedback", status = "error", message = "Lua: Error executing script: " .. tostring(err_exec), jobId = current_teleport_job_id or "N/A" })
-                    current_teleport_job_id = nil 
+                    warn("[SNIPER_LUA_EXEC] Error executing script: " .. tostring(err_exec))
+                    send_ws_message({ type = "feedback", status = "error", message = "Lua: Script exec error: " .. tostring(err_exec), jobId = current_teleport_job_id or "N/A"})
+                    current_teleport_job_id = nil -- Reset on error
                 else
-                    warn("[SNIPER_LUA_EXEC] Raw script initiated/executed successfully (JobID: " .. (current_teleport_job_id or "N/A") .. ").")
-                    if not current_teleport_job_id then
-                         send_ws_message({ type = "feedback", status = "success", message = "Lua: Non-teleport script executed."})
-                    end
+                    warn("[SNIPER_LUA_EXEC] Script exec initiated (JobID: " .. (current_teleport_job_id or "N/A") .. ").")
+                    if not current_teleport_job_id then send_ws_message({type="feedback",status="success",message="Lua: Non-teleport script exec."})end
                 end
-            else
-                warn("[SNIPER_LUA_EXEC] loadstring failed to compile script: " .. tostring(err_load))
-                send_ws_message({ type = "feedback", status = "error", message = "Lua: loadstring compile error: " .. tostring(err_load) })
-            end
-        else
-            warn("[SNIPER_LUA_EXEC] loadstring function is not available in this environment.")
-            send_ws_message({ type = "feedback", status = "error", message = "Lua: loadstring not available." })
-        end
+            else warn("[SNIPER_LUA_EXEC] loadstring compile fail: " .. tostring(err_load)); send_ws_message({type="feedback",status="error",message="Lua:loadstring compile err:"..tostring(err_load)}) end
+        else warn("[SNIPER_LUA_EXEC] loadstring N/A"); send_ws_message({type="feedback",status="error",message="Lua:loadstring N/A"}) end
     end
 end
 
--- TeleportInitFailed Handler (for Error 772 and others)
+-- ADDED: TeleportInitFailed Handler
 local function onTeleportInitFailed(player, teleportResult, errorMessage, placeId, teleportOptions)
     warn(("[SNIPER_LUA_TP_FAIL] TeleportInitFailed. Player: %s, Result: %s, Error: %s, PlaceID: %s"):format(
         player.Name, tostring(teleportResult), tostring(errorMessage), tostring(placeId)
     ))
     local resultString = tostring(teleportResult); local errorCode = string.match(resultString, "%d+"); if errorCode then errorCode = tonumber(errorCode) end
     warn("[SNIPER_LUA_TP_FAIL] Parsed ErrorCode: " .. tostring(errorCode) .. " (from result: " .. resultString .. ")")
+
     if current_teleport_job_id then
         warn("[SNIPER_LUA_TP_FAIL] This failure is for JobID: " .. current_teleport_job_id)
-        if errorCode == 772 then
+        if errorCode == 772 then -- Error Code 772: Requested experience is full.
             warn("[SNIPER_LUA_TP_FAIL] Teleport failed because server is full (Error 772). Sending feedback.")
             send_ws_message({ type = "feedback", status = "teleport_failed_server_full", message = "Lua: Teleport failed - server full (Error 772).", jobId = current_teleport_job_id, errorCode = 772 })
         else
             warn("[SNIPER_LUA_TP_FAIL] Teleport failed for other reason. Sending generic failure feedback.")
             send_ws_message({ type = "feedback", status = "teleport_failed_other", message = "Lua: Teleport failed - " .. resultString .. " (" .. errorMessage .. ")", jobId = current_teleport_job_id, errorCode = errorCode or "Unknown" })
         end
-        current_teleport_job_id = nil
+        current_teleport_job_id = nil -- Reset after handling
     else
         warn("[SNIPER_LUA_TP_FAIL] TeleportInitFailed, but no current_teleport_job_id was being tracked.")
     end
-    send_ws_message({ type = "status_update", status = "idle" })
+    send_ws_message({ type = "status_update", status = "idle" }) -- Always set to idle after a teleport attempt (success or fail)
 end
 TeleportService.TeleportInitFailed:Connect(onTeleportInitFailed)
+-- END ADDED
 
--- setup_chat_listeners function (unchanged)
+-- setup_chat_listeners function (FROM YOUR WORKING SCRIPT)
 local function setup_chat_listeners()
     if TextChatService then
         warn("[SNIPER_LUA_CHAT_LISTEN] Setting up TextChatService.MessageReceived listener.")
@@ -281,7 +178,7 @@ local function setup_chat_listeners()
     end
 end
 
--- connect_websocket function (unchanged)
+-- connect_websocket function (FROM YOUR WORKING SCRIPT - it calls setup_chat_listeners)
 local function connect_websocket()
     if connection_attempt_active then warn("[SNIPER_LUA_WS] Connection attempt already active. Skipping."); return end
     warn("[SNIPER_LUA_WS] Attempting to connect WebSocket..."); connection_attempt_active = true; is_connected = false
