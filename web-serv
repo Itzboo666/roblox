@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local WEBSOCKET_SERVER_URL = "ws://86.163.93.186:8080" -- MODIFIED: Changed port to 8000 to match Electron default, ENSURE IP IS CORRECT
+local WEBSOCKET_SERVER_URL = "ws://2.tcp.eu.ngrok.io:12321" -- MODIFIED: Changed port to 8000 to match Electron default, ENSURE IP IS CORRECT
 local RECONNECT_DELAY = 7
 local PING_INTERVAL = 25
 
