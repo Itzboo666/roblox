@@ -1,12 +1,12 @@
--- --- START OF Lua Script (Based on YOUR working script, with ONLY TeleportInitFailed ADDED) ---
+-- --- START OF Lua Script (Minimal change for GameFull, based on YOUR working script) ---
 
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- local ReplicatedStorage = game:GetService("ReplicatedStorage") -- Not used in this version
 
-local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" -- FROM YOUR WORKING SCRIPT
+local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" -- YOUR WORKING URL FROM "the lua script that works.txt"
 local RECONNECT_DELAY = 7
 local PING_INTERVAL = 25
 
@@ -15,7 +15,8 @@ local instanceIdFromServer = nil
 local is_connected = false
 local last_ping_sent = 0
 local connection_attempt_active = false
-local current_teleport_job_id = nil -- ADDED: To track the job ID for TeleportInitFailed
+-- No current_teleport_job_id needed if we only care about GameFull for THIS client.
+-- main.js will know which client sent the feedback.
 
 -- _try_attach_event function (FROM YOUR WORKING SCRIPT)
 local function _try_attach_event(client, event_config, callback)
@@ -73,7 +74,7 @@ local function send_identity_report()
     if not Players.LocalPlayer then task.wait(1); if not Players.LocalPlayer then warn("[LUA_ID] LocalPlayer N/A"); return end end; local uid = Players.LocalPlayer.UserId; local uname = Players.LocalPlayer.Name; if uid and uname then send_ws_message({ type = "identity_report", userId = tostring(uid), userName = uname }) else warn("[LUA_ID] UID/UName missing") end
 end
 
--- handle_server_message function (FROM YOUR WORKING SCRIPT, with JobID tracking added for current_teleport_job_id)
+-- handle_server_message function (FROM YOUR WORKING SCRIPT - no setfenv, assuming your executor handles it)
 local function handle_server_message(message_string)
     local decoded_successfully, data_or_error = pcall(HttpService.JSONDecode, HttpService, message_string)
     if decoded_successfully then
@@ -98,56 +99,49 @@ local function handle_server_message(message_string)
         else warn("[SNIPER_LUA_WS] Unknown JSON type: " .. (data.type or "nil")) end
     else
         warn("[SNIPER_LUA_WS] JSON decode failed. Assuming raw script: " .. message_string:sub(1,100) .. "...")
-        if typeof(loadstring) == "function" then -- This is the existing loadstring path from your working script
+        if typeof(loadstring) == "function" then
             local func, err_load = loadstring(message_string)
             if func then
-                -- ADDED: Try to extract JobID from the script string for TeleportInitFailed tracking
-                local match_job_id = string.match(message_string, 'TeleportToPlaceInstance%s*%(%s*%d+%s*,%s*["%'](.-)["%']%s*%)')
-                if match_job_id then
-                    current_teleport_job_id = match_job_id
-                    warn("[SNIPER_LUA_EXEC] Identified teleport script for JobID: " .. current_teleport_job_id)
-                else
-                    current_teleport_job_id = nil 
-                end
-                send_ws_message({ type = "status_update", status = "executing_script", jobId = current_teleport_job_id or "N/A" })
+                -- Send status update BEFORE trying to execute
+                send_ws_message({ type = "status_update", status = "executing_script" })
                 local exec_success, err_exec = pcall(func)
                 if not exec_success then
                     warn("[SNIPER_LUA_EXEC] Error executing script: " .. tostring(err_exec))
-                    send_ws_message({ type = "feedback", status = "error", message = "Lua: Script exec error: " .. tostring(err_exec), jobId = current_teleport_job_id or "N/A"})
-                    current_teleport_job_id = nil 
+                    send_ws_message({ type = "feedback", status = "error", message = "Lua: Script exec error: " .. tostring(err_exec)})
                 else
-                    warn("[SNIPER_LUA_EXEC] Script exec initiated (JobID: " .. (current_teleport_job_id or "N/A") .. ").")
-                    if not current_teleport_job_id then send_ws_message({type="feedback",status="success",message="Lua: Non-teleport script exec."})end
+                    warn("[SNIPER_LUA_EXEC] Script exec initiated.")
+                    -- If it's a teleport, TeleportInitFailed will handle outcome.
+                    -- If not a teleport, it just ran.
                 end
             else warn("[SNIPER_LUA_EXEC] loadstring compile fail: " .. tostring(err_load)); send_ws_message({type="feedback",status="error",message="Lua:loadstring compile err:"..tostring(err_load)}) end
         else warn("[SNIPER_LUA_EXEC] loadstring N/A"); send_ws_message({type="feedback",status="error",message="Lua:loadstring N/A"}) end
     end
 end
 
--- ADDED: TeleportInitFailed Handler (Minimal change to your working script)
-local function onTeleportInitFailed(player, teleportResult, errorMessage, placeId, teleportOptions)
-    warn(("[SNIPER_LUA_TP_FAIL] TeleportInitFailed. Player: %s, Result: %s, Error: %s, PlaceID: %s"):format(
-        player.Name, tostring(teleportResult), tostring(errorMessage), tostring(placeId)
-    ))
-    local resultString = tostring(teleportResult); local errorCode = string.match(resultString, "%d+"); if errorCode then errorCode = tonumber(errorCode) end
-    warn("[SNIPER_LUA_TP_FAIL] Parsed ErrorCode: " .. tostring(errorCode) .. " (from result: " .. resultString .. ")")
-
-    if current_teleport_job_id then
-        warn("[SNIPER_LUA_TP_FAIL] This failure is for JobID: " .. current_teleport_job_id)
-        if errorCode == 772 then 
-            warn("[SNIPER_LUA_TP_FAIL] Teleport failed because server is full (Error 772). Sending feedback.")
-            send_ws_message({ type = "feedback", status = "teleport_failed_server_full", message = "Lua: Teleport failed - server full (Error 772).", jobId = current_teleport_job_id, errorCode = 772 })
-        else
-            warn("[SNIPER_LUA_TP_FAIL] Teleport failed for other reason. Sending generic failure feedback.")
-            send_ws_message({ type = "feedback", status = "teleport_failed_other", message = "Lua: Teleport failed - " .. resultString .. " (" .. errorMessage .. ")", jobId = current_teleport_job_id, errorCode = errorCode or "Unknown" })
-        end
-        current_teleport_job_id = nil 
-    else
-        warn("[SNIPER_LUA_TP_FAIL] TeleportInitFailed, but no current_teleport_job_id was being tracked.")
+-- ADDED: TeleportInitFailed Handler (Simplified based on your example)
+TeleportService.TeleportInitFailed:Connect(function(player, result, errorMessage)
+    if player == Players.LocalPlayer and result == Enum.TeleportResult.GameFull then
+        warn("[SNIPER_LUA_TP_FAIL] Teleport failed: Server full (Error Code 772). Sending signal to reset cooldown.")
+        send_ws_message({
+            type = "feedback",
+            status = "teleport_failed_server_full_simple", -- New distinct status for main.js
+            message = "Lua: Server was full (772)." 
+            -- No need to send jobId if main.js just resets the client that sent this.
+        })
+        -- After sending feedback, set client status to idle locally as well for consistency.
+        send_ws_message({ type = "status_update", status = "idle" })
+    elseif player == Players.LocalPlayer then
+        -- Handle other teleport failures if needed, or just let them be.
+        -- For now, just log and set to idle.
+        warn(("[SNIPER_LUA_TP_FAIL] Teleport failed for other reason. Result: %s, Error: %s"):format(tostring(result), tostring(errorMessage)))
+        send_ws_message({ type = "status_update", status = "idle" })
+        send_ws_message({
+            type = "feedback",
+            status = "teleport_failed_other_simple",
+            message = "Lua: Teleport failed - " .. tostring(result) .. " (" .. errorMessage .. ")"
+        })
     end
-    send_ws_message({ type = "status_update", status = "idle" }) 
-end
-TeleportService.TeleportInitFailed:Connect(onTeleportInitFailed)
+end)
 -- END ADDED
 
 -- setup_chat_listeners function (FROM YOUR WORKING SCRIPT)
@@ -178,7 +172,7 @@ local function setup_chat_listeners()
     end
 end
 
--- connect_websocket function (FROM YOUR WORKING SCRIPT)
+-- connect_websocket function (FROM YOUR WORKING SCRIPT - it calls setup_chat_listeners)
 local function connect_websocket()
     if connection_attempt_active then warn("[SNIPER_LUA_WS] Connection attempt already active. Skipping."); return end
     warn("[SNIPER_LUA_WS] Attempting to connect WebSocket..."); connection_attempt_active = true; is_connected = false
@@ -207,4 +201,4 @@ spawn(function()
 end)
 
 warn("[SNIPER_LUA_CORE] Script main execution finished. Background tasks (WS, ping) are running.")
--- --- END OF ENTIRE MODIFIED Websocket-lua.txt ---
+-- --- END OF Lua Script (Based on YOUR working script, with ONLY TeleportInitFailed ADDED) ---
