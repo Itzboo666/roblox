@@ -1,4 +1,4 @@
--- --- START OF ENTIRE MODIFIED Websocket-lua.txt ---
+-- --- START OF ENTIRE MODIFIED Websocket-lua.txt (Handles TeleportInitFailed for Error 772) ---
 
 local HttpService = game:GetService("HttpService")
 local TeleportService = game:GetService("TeleportService")
@@ -6,8 +6,8 @@ local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" 
-local RECONNECT_DELAY = 5
+local WEBSOCKET_SERVER_URL = "ws://192.168.1.210:8080" -- ENSURE IP AND PORT ARE CORRECT
+local RECONNECT_DELAY = 7
 local PING_INTERVAL = 25
 
 local ws_client
@@ -15,6 +15,7 @@ local instanceIdFromServer = nil
 local is_connected = false
 local last_ping_sent = 0
 local connection_attempt_active = false
+local current_teleport_job_id = nil -- To track the job ID we are trying to join
 
 -- Keep _try_attach_event and _try_send_message as they are
 local function _try_attach_event(client, event_config, callback)
@@ -91,8 +92,6 @@ local function send_ws_message(data_table)
     local sent, method_or_error = _try_send_message(ws_client, json_data)
     if not sent then
         warn("[SNIPER_LUA_WS] All WebSocket send methods failed. Last error: " .. tostring(method_or_error))
-    else
-        -- warn("[SNIPER_LUA_WS] Successfully sent WS message of type: " .. data_table.type)
     end
 end
 
@@ -119,13 +118,11 @@ local function send_identity_report()
     end
 end
 
--- --- START OF MODIFIED handle_server_message for Websocket-lua.txt ---
+-- MODIFIED handle_server_message
 local function handle_server_message(message_string)
-    -- warn("[SNIPER_LUA_WS] Raw message received: " .. message_string)
     local decoded_successfully, data_or_error = pcall(HttpService.JSONDecode, HttpService, message_string)
 
     if decoded_successfully then
-        -- It was valid JSON, process structured commands
         local data = data_or_error
         if data.type == "connected" then
             warn("[SNIPER_LUA_WS] Received 'connected' from server. InstanceID: " .. (data.instanceId or "N/A"))
@@ -137,8 +134,7 @@ local function handle_server_message(message_string)
             elseif not server_tells_us_status and not (server_tells_us_status == "active_cooldown" or server_tells_us_status == "teleport_sent_awaiting_disconnect" or server_tells_us_status == "teleport_initiated_awaiting_reconnect") then
                 send_ws_message({ type = "status_update", status = "idle" })
             end
-        elseif data.type == "ping" then -- Server might send this (though current main.js doesn't)
-            -- warn("[SNIPER_LUA_WS] Received server ping, sending pong.")
+        elseif data.type == "ping" then
             send_ws_message({ type = "pong" })
         elseif data.type == "error" and data.message == "Identity not established." then
             warn("[SNIPER_LUA_WS] Received 'Identity not established' error. Resending identity.")
@@ -146,8 +142,8 @@ local function handle_server_message(message_string)
         elseif data.type == "send_chat_to_roblox" and data.message then
             warn("[SNIPER_LUA_CHAT] Received 'send_chat_to_roblox': ", HttpService:JSONEncode(data))
             local messageToSend = tostring(data.message)
-            -- (Your existing send_chat_to_roblox handling logic)
             local messageSent = false
+            -- (Keep your existing send_chat_to_roblox handling logic here)
             if TextChatService then
                 local targetChannel = nil
                 if TextChatService:FindFirstChild("ChatInputBarConfiguration") then
@@ -185,16 +181,29 @@ local function handle_server_message(message_string)
         if typeof(loadstring) == "function" then
             local func, err_load = loadstring(message_string)
             if func then
-                -- Optionally send a status update BEFORE trying to execute
-                send_ws_message({ type = "status_update", status = "executing_script" })
-                local exec_success, err_exec = pcall(func) -- Execute the loaded script
+                -- Check if this script is a teleport command to track its job ID
+                local match_job_id = string.match(message_string, 'TeleportToPlaceInstance%s*%(%s*%d+%s*,%s*["%'](.-)["%']%s*%)')
+                if match_job_id then
+                    current_teleport_job_id = match_job_id
+                    warn("[SNIPER_LUA_EXEC] Identified teleport script for JobID: " .. current_teleport_job_id)
+                else
+                    current_teleport_job_id = nil -- Reset if not a teleport script
+                end
+
+                send_ws_message({ type = "status_update", status = "executing_script", jobId = current_teleport_job_id or "N/A" })
+                
+                local exec_success, err_exec = pcall(func)
                 if not exec_success then
                     warn("[SNIPER_LUA_EXEC] Error executing received script: " .. tostring(err_exec))
-                    send_ws_message({ type = "feedback", status = "error", message = "Lua: Error executing script: " .. tostring(err_exec) })
+                    send_ws_message({ type = "feedback", status = "error", message = "Lua: Error executing script: " .. tostring(err_exec), jobId = current_teleport_job_id or "N/A" })
+                    current_teleport_job_id = nil -- Reset on error
                 else
-                    warn("[SNIPER_LUA_EXEC] Raw script initiated/executed successfully.")
-                    -- If it's a teleport, the script will disconnect, so further feedback might not send.
-                    -- Client status will be updated by main.js based on cooldown and eventually disconnect.
+                    warn("[SNIPER_LUA_EXEC] Raw script initiated/executed successfully (JobID: " .. (current_teleport_job_id or "N/A") .. ").")
+                    -- If it was a teleport, the TeleportInitFailed event will handle actual success/failure.
+                    -- If not a teleport, we assume it ran. Could send a generic success feedback.
+                    if not current_teleport_job_id then
+                         send_ws_message({ type = "feedback", status = "success", message = "Lua: Non-teleport script executed."})
+                    end
                 end
             else
                 warn("[SNIPER_LUA_EXEC] loadstring failed to compile script: " .. tostring(err_load))
@@ -206,213 +215,96 @@ local function handle_server_message(message_string)
         end
     end
 end
--- --- END OF MODIFIED handle_server_message for Websocket-lua.txt ---
+
+-- NEW: TeleportInitFailed Handler
+local function onTeleportInitFailed(player, teleportResult, errorMessage, placeId, teleportOptions)
+    warn(("[SNIPER_LUA_TP_FAIL] TeleportInitFailed. Player: %s, Result: %s, Error: %s, PlaceID: %s"):format(
+        player.Name, 
+        tostring(teleportResult), 
+        tostring(errorMessage), 
+        tostring(placeId)
+    ))
+
+    local resultString = tostring(teleportResult) -- EnumItem to string
+    local errorCode = string.match(resultString, "%d+") -- Try to extract numeric code
+    if errorCode then errorCode = tonumber(errorCode) end
+    
+    warn("[SNIPER_LUA_TP_FAIL] Parsed ErrorCode: " .. tostring(errorCode) .. " (from result: " .. resultString .. ")")
+
+    if current_teleport_job_id then
+        warn("[SNIPER_LUA_TP_FAIL] This failure is for JobID: " .. current_teleport_job_id)
+        if errorCode == 772 then -- Error Code 772: Requested experience is full.
+            warn("[SNIPER_LUA_TP_FAIL] Teleport failed because server is full (Error 772). Sending feedback.")
+            send_ws_message({
+                type = "feedback",
+                status = "teleport_failed_server_full",
+                message = "Lua: Teleport failed - server full (Error 772).",
+                jobId = current_teleport_job_id,
+                errorCode = 772
+            })
+        else
+            warn("[SNIPER_LUA_TP_FAIL] Teleport failed for other reason. Sending generic failure feedback.")
+            send_ws_message({
+                type = "feedback",
+                status = "teleport_failed_other",
+                message = "Lua: Teleport failed - " .. resultString .. " (" .. errorMessage .. ")",
+                jobId = current_teleport_job_id,
+                errorCode = errorCode or "Unknown"
+            })
+        end
+        current_teleport_job_id = nil -- Reset after handling
+    else
+        warn("[SNIPER_LUA_TP_FAIL] TeleportInitFailed, but no current_teleport_job_id was being tracked.")
+    end
+    
+    -- Regardless of the error, after a failed teleport attempt, update status to idle
+    send_ws_message({ type = "status_update", status = "idle" })
+end
+
+TeleportService.TeleportInitFailed:Connect(onTeleportInitFailed)
+-- END NEW: TeleportInitFailed Handler
+
 
 local function setup_chat_listeners()
+    -- ... (Keep your existing setup_chat_listeners function as it was) ...
     if TextChatService then
         warn("[SNIPER_LUA_CHAT_LISTEN] Setting up TextChatService.MessageReceived listener.")
         TextChatService.MessageReceived:Connect(function(textChatMessage)
-            -- warn("[SNIPER_LUA_CHAT_LISTEN] TextChatService.MessageReceived Fired. Text: ", textChatMessage.Text, " Source available: ", tostring(textChatMessage.TextSource ~= nil))
-            if not is_connected then
-                -- warn("[SNIPER_LUA_CHAT_LISTEN] MessageReceived, but not connected to WS. Aborting send.")
-                return
+            if not is_connected then return end
+            local authorUserId = "System"; local authorDisplayName = "System"; local messageText = textChatMessage.Text
+            local timestamp; if textChatMessage.Timestamp and typeof(textChatMessage.Timestamp) == "DateTime" then if textChatMessage.Timestamp.UnixTimestampMillis then timestamp = math.floor(textChatMessage.Timestamp.UnixTimestampMillis / 1000) elseif textChatMessage.Timestamp.UnixTimestamp then timestamp = textChatMessage.Timestamp.UnixTimestamp else timestamp = os.time() end else timestamp = os.time() end
+            if textChatMessage.TextSource then authorUserId = tostring(textChatMessage.TextSource.UserId); local sourcePlayer = Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
+                if sourcePlayer then authorDisplayName = sourcePlayer.DisplayName; if not authorDisplayName or authorDisplayName == "" then authorDisplayName = sourcePlayer.Name end
+                else local tsName = "UnknownPlayer"; local s, nV = pcall(function() return textChatMessage.TextSource.Name end); if s and nV then tsName = nV end; authorDisplayName = tsName end
             end
-            
-            local authorUserId = "System"
-            local authorDisplayName = "System" 
-            local messageText = textChatMessage.Text
-            
-            local timestamp
-            if textChatMessage.Timestamp and typeof(textChatMessage.Timestamp) == "DateTime" then
-                if textChatMessage.Timestamp.UnixTimestampMillis then
-                    timestamp = math.floor(textChatMessage.Timestamp.UnixTimestampMillis / 1000)
-                elseif textChatMessage.Timestamp.UnixTimestamp then
-                    timestamp = textChatMessage.Timestamp.UnixTimestamp
-                else
-                    timestamp = os.time() 
-                end
-            else
-                timestamp = os.time() 
-            end
-
-            if textChatMessage.TextSource then 
-                authorUserId = tostring(textChatMessage.TextSource.UserId)
-                local sourcePlayer = Players:GetPlayerByUserId(textChatMessage.TextSource.UserId)
-                if sourcePlayer then
-                    authorDisplayName = sourcePlayer.DisplayName 
-                    if not authorDisplayName or authorDisplayName == "" then 
-                        authorDisplayName = sourcePlayer.Name
-                    end
-                else
-                    local tsName = "UnknownPlayer" 
-                    local success_getName, nameValue = pcall(function() return textChatMessage.TextSource.Name end)
-                    if success_getName and nameValue then
-                        tsName = nameValue
-                    end
-                    authorDisplayName = tsName
-                end
-            end
-            
-            local payload = {
-                type = "chat_message_from_client",
-                authorUserId = authorUserId,
-                authorDisplayName = authorDisplayName,
-                message = messageText,
-                timestamp = timestamp
-            }
-            -- warn("[SNIPER_LUA_CHAT_LISTEN] Sending to Sniper (TCS): ", HttpService:JSONEncode(payload))
-            send_ws_message(payload)
+            send_ws_message({type = "chat_message_from_client", authorUserId = authorUserId, authorDisplayName = authorDisplayName, message = messageText, timestamp = timestamp})
         end)
     else
         warn("[SNIPER_LUA_CHAT_LISTEN] TextChatService not found. Setting up legacy chat listeners.")
         local function handle_legacy_chat(player, message, eventType)
-            -- warn("[SNIPER_LUA_CHAT_LISTEN] Legacy Chat ("..eventType..") Fired. Player: " .. player.Name .. ", Message: " .. message)
             if not is_connected then return end
-            local payload = {
-                type = "chat_message_from_client",
-                authorUserId = tostring(player.UserId),
-                authorDisplayName = player.Name, 
-                message = message,
-                timestamp = os.time()
-            }
-            if player.DisplayName and player.DisplayName ~= "" then
-                 payload.authorDisplayName = player.DisplayName
-            end
-            -- warn("[SNIPER_LUA_CHAT_LISTEN] Sending to Sniper (Legacy): ", HttpService:JSONEncode(payload))
+            local payload = {type = "chat_message_from_client", authorUserId = tostring(player.UserId), authorDisplayName = player.Name, message = message, timestamp = os.time()}
+            if player.DisplayName and player.DisplayName ~= "" then payload.authorDisplayName = player.DisplayName end
             send_ws_message(payload)
         end
-
-        Players.PlayerAdded:Connect(function(player)
-            player.Chatted:Connect(function(message) handle_legacy_chat(player, message, "PlayerAdded.Chatted") end)
-        end)
-        for _, player in ipairs(Players:GetPlayers()) do
-            player.Chatted:Connect(function(message) handle_legacy_chat(player, message, "ExistingPlayer.Chatted") end)
-        end
-        if Players.LocalPlayer then
-             local existingConnection
-             existingConnection = Players.LocalPlayer.Chatted:Connect(function(message)
-                if not Players.LocalPlayer then
-                    if existingConnection then existingConnection:Disconnect() end
-                    return
-                end
-                handle_legacy_chat(Players.LocalPlayer, message, "LocalPlayer.Chatted")
-             end)
-        end
+        Players.PlayerAdded:Connect(function(player) player.Chatted:Connect(function(message) handle_legacy_chat(player, message, "PlayerAdded.Chatted") end) end)
+        for _, player in ipairs(Players:GetPlayers()) do player.Chatted:Connect(function(message) handle_legacy_chat(player, message, "ExistingPlayer.Chatted") end) end
+        if Players.LocalPlayer then local eC; eC = Players.LocalPlayer.Chatted:Connect(function(message) if not Players.LocalPlayer then if eC then eC:Disconnect() end return end handle_legacy_chat(Players.LocalPlayer, message, "LocalPlayer.Chatted") end) end
     end
 end
 
 
 local function connect_websocket()
-    if connection_attempt_active then
-        warn("[SNIPER_LUA_WS] Connection attempt already active. Skipping.")
-        return
-    end
-    warn("[SNIPER_LUA_WS] Attempting to connect WebSocket...")
-    connection_attempt_active = true
-    is_connected = false
-    if ws_client and ws_client.close then
-        warn("[SNIPER_LUA_WS] Closing existing WebSocket client.")
-        pcall(ws_client.close, ws_client)
-    end
-    ws_client = nil
-
-    local function _handle_message_wrapper(message_data)
-        local message_content = message_data
-        if type(message_data) == "table" and message_data.data then
-            message_content = message_data.data
-        end
-        if type(message_content) == "string" then
-            handle_server_message(message_content)
-        end
-    end
-
-    local function _handle_close_wrapper(code, reason)
-        warn("[SNIPER_LUA_WS] WebSocket closed. Code: " .. tostring(code) .. ", Reason: " .. tostring(reason) .. ". Reconnecting in " .. RECONNECT_DELAY .. "s.")
-        is_connected = false
-        ws_client = nil
-        connection_attempt_active = false
-        task.wait(RECONNECT_DELAY)
-        connect_websocket()
-    end
-
-    local function _handle_error_wrapper(err)
-        warn("[SNIPER_LUA_WS] WebSocket error: " .. tostring(err) .. ". Reconnecting in " .. RECONNECT_DELAY .. "s.")
-        if is_connected then
-             pcall(function() if ws_client and ws_client.close then ws_client:close() end end)
-        end
-        is_connected = false
-        ws_client = nil
-        connection_attempt_active = false
-        task.wait(RECONNECT_DELAY)
-        connect_websocket()
-    end
-
-    local executor_ws_lib_name = "Unknown"
-
-    if syn and syn.websocket and syn.websocket.connect then
-        executor_ws_lib_name = "syn.websocket"
-        warn("[SNIPER_LUA_WS] Using " .. executor_ws_lib_name)
-        local connect_success, new_client = pcall(function()
-            return syn.websocket.connect(WEBSOCKET_SERVER_URL)
-        end)
-        if not connect_success or not new_client then
-            warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. ".connect failed: " .. tostring(new_client))
-            connection_attempt_active = false
-            task.wait(RECONNECT_DELAY)
-            connect_websocket()
-            return
-        end
-        ws_client = new_client
-        ws_client.OnMessage:Connect(_handle_message_wrapper)
-        ws_client.OnClose:Connect(_handle_close_wrapper)
-        if ws_client.OnError then ws_client.OnError:Connect(_handle_error_wrapper)
-        else warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. " has no OnError event.") end
-        
-        warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. " events connected.")
-        connection_attempt_active = false
-        send_identity_report()
-        setup_chat_listeners()
-    elseif WebSocket and WebSocket.connect then
-        executor_ws_lib_name = "WebSocket (generic)"
-        warn("[SNIPER_LUA_WS] Using " .. executor_ws_lib_name)
-        local success_connect, client_or_error = pcall(WebSocket.connect, WEBSOCKET_SERVER_URL)
-        if not success_connect or not client_or_error then
-            warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. ".connect failed: " .. tostring(client_or_error))
-            connection_attempt_active = false
-            task.wait(RECONNECT_DELAY)
-            connect_websocket()
-            return
-        end
-        ws_client = client_or_error
-        local message_event_config = {PascalEvent = "OnMessage", snake_event = "on_message", direct_on_event = "onmessage", direct_on_underscore_event = "on_message", emitter_event = "message"}
-        local close_event_config = {PascalEvent = "OnClose", snake_event = "on_close", direct_on_event = "onclose", direct_on_underscore_event = "on_close", emitter_event = "close"}
-        local error_event_config = {PascalEvent = "OnError", snake_event = "on_error", direct_on_event = "onerror", direct_on_underscore_event = "on_error", emitter_event = "error"}
-        
-        local attached_msg, msg_method = _try_attach_event(ws_client, message_event_config, _handle_message_wrapper)
-        if not attached_msg then warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. ": Could not attach message handler.") else warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. " Msg handler: " .. msg_method) end
-        
-        local attached_close, close_method = _try_attach_event(ws_client, close_event_config, _handle_close_wrapper)
-        if not attached_close then warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. ": Could not attach close handler.") else warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. " Close handler: " .. close_method) end
-        
-        local attached_error, error_method = _try_attach_event(ws_client, error_event_config, _handle_error_wrapper)
-        if not attached_error then warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. ": Could not attach error handler.") else warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. " Error handler: " .. error_method) end
-        
-        warn("[SNIPER_LUA_WS] " .. executor_ws_lib_name .. " events attempted to connect.")
-        connection_attempt_active = false
-        if not (attached_msg and attached_close) then
-             warn("[SNIPER_LUA_WS] Critical " .. executor_ws_lib_name .. " event handlers (message or close) not attached. Reconnecting.")
-             if ws_client.close then pcall(ws_client.close, ws_client) end
-             ws_client = nil; is_connected = false
-             task.wait(RECONNECT_DELAY); connect_websocket()
-             return
-        end
-        send_identity_report()
-        setup_chat_listeners()
-    else
-        warn("[SNIPER_LUA_WS] No WebSocket library (syn or generic WebSocket) found. Cannot connect.")
-        connection_attempt_active = false
-        return
-    end
+    -- ... (Keep your existing connect_websocket function as it was, it calls setup_chat_listeners) ...
+    if connection_attempt_active then warn("[SNIPER_LUA_WS] Connection attempt already active. Skipping."); return end
+    warn("[SNIPER_LUA_WS] Attempting to connect WebSocket..."); connection_attempt_active = true; is_connected = false
+    if ws_client and ws_client.close then warn("[SNIPER_LUA_WS] Closing existing WebSocket client."); pcall(ws_client.close, ws_client) end; ws_client = nil
+    local function _hMW(mD) local mC=mD; if type(mD)=="table" and mD.data then mC=mD.data end; if type(mC)=="string" then handle_server_message(mC) end end
+    local function _hCW(c,r) warn(("[SNIPER_LUA_WS] WebSocket closed. Code: %s, Reason: %s. Reconnecting in %ss."):format(tostring(c),tostring(r),RECONNECT_DELAY)); is_connected=false;ws_client=nil;connection_attempt_active=false;task.wait(RECONNECT_DELAY);connect_websocket() end
+    local function _hEW(e) warn(("[SNIPER_LUA_WS] WebSocket error: %s. Reconnecting in %ss."):format(tostring(e),RECONNECT_DELAY)); if is_connected then pcall(function() if ws_client and ws_client.close then ws_client:close() end end) end; is_connected=false;ws_client=nil;connection_attempt_active=false;task.wait(RECONNECT_DELAY);connect_websocket() end
+    local exLibN="Unknown"; if syn and syn.websocket and syn.websocket.connect then exLibN="syn.websocket"; warn("[SNIPER_LUA_WS] Using "..exLibN); local cS,nC=pcall(function() return syn.websocket.connect(WEBSOCKET_SERVER_URL) end); if not cS or not nC then warn(("[SNIPER_LUA_WS] %s.connect failed: %s"):format(exLibN,tostring(nC)));connection_attempt_active=false;task.wait(RECONNECT_DELAY);connect_websocket();return end; ws_client=nC;ws_client.OnMessage:Connect(_hMW);ws_client.OnClose:Connect(_hCW);if ws_client.OnError then ws_client.OnError:Connect(_hEW) else warn("[SNIPER_LUA_WS] "..exLibN.." has no OnError event.") end; warn("[SNIPER_LUA_WS] "..exLibN.." events connected.");connection_attempt_active=false;send_identity_report();setup_chat_listeners()
+    elseif WebSocket and WebSocket.connect then exLibN="WebSocket (generic)"; warn("[SNIPER_LUA_WS] Using "..exLibN); local sC,cOE=pcall(WebSocket.connect,WEBSOCKET_SERVER_URL); if not sC or not cOE then warn(("[SNIPER_LUA_WS] %s.connect failed: %s"):format(exLibN,tostring(cOE)));connection_attempt_active=false;task.wait(RECONNECT_DELAY);connect_websocket();return end; ws_client=cOE; local mEC={PascalEvent="OnMessage",snake_event="on_message",direct_on_event="onmessage",direct_on_underscore_event="on_message",emitter_event="message"}; local cEC={PascalEvent="OnClose",snake_event="on_close",direct_on_event="onclose",direct_on_underscore_event="on_close",emitter_event="close"}; local eEC={PascalEvent="OnError",snake_event="on_error",direct_on_event="onerror",direct_on_underscore_event="on_error",emitter_event="error"}; local aM,mM=_try_attach_event(ws_client,mEC,_hMW);if not aM then warn("[SNIPER_LUA_WS] "..exLibN..": No msg handler.") else warn("[SNIPER_LUA_WS] "..exLibN.." Msg: "..mM) end; local aC,cM=_try_attach_event(ws_client,cEC,_hCW);if not aC then warn("[SNIPER_LUA_WS] "..exLibN..": No close handler.") else warn("[SNIPER_LUA_WS] "..exLibN.." Close: "..cM) end; local aE,eM=_try_attach_event(ws_client,eEC,_hEW);if not aE then warn("[SNIPER_LUA_WS] "..exLibN..": No error handler.") else warn("[SNIPER_LUA_WS] "..exLibN.." Error: "..eM) end; warn("[SNIPER_LUA_WS] "..exLibN.." events attempted.");connection_attempt_active=false;if not(aM and aC)then warn("[SNIPER_LUA_WS] Critical "..exLibN.." handlers not attached. Reconnecting.");if ws_client.close then pcall(ws_client.close,ws_client)end;ws_client=nil;is_connected=false;task.wait(RECONNECT_DELAY);connect_websocket();return end;send_identity_report();setup_chat_listeners()
+    else warn("[SNIPER_LUA_WS] No WebSocket library found. Cannot connect.");connection_attempt_active=false;return end
 end
 
 warn("[SNIPER_LUA_CORE] Script initiated. Attempting initial WebSocket connection.")
